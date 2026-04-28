@@ -2,8 +2,8 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "AdvancedMovement",
-	"Description": "",
+	"FriendlyName": "CoreFeatures",
+	"Description": "Main API for all plugins",
 	"Category": "Other",
 	"CreatedBy": "Vladislav Prokopev",
 	"CreatedByURL": "",
@@ -16,20 +16,9 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "AdvancedMovement",
+			"Name": "CoreFeatures",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		}
-	],
-	"Plugins": [
-		{
-			"Name" : "EnhancedInput",
-			"Enabled" : true,
-			"CanContainContent": true
-		},
-		{
-			"Name" : "ModularGameplay",
-			"Enabled" : true
 		}
 	]
 }

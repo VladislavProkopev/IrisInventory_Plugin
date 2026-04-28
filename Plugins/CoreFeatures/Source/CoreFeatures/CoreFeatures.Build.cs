@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class AdvancedMovement : ModuleRules
+public class CoreFeatures : ModuleRules
 {
-	public AdvancedMovement(ReadOnlyTargetRules Target) : base(Target)
+	public CoreFeatures(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -26,9 +26,6 @@ public class AdvancedMovement : ModuleRules
 			new string[]
 			{
 				"Core",
-				"EnhancedInput",
-				"GameplayTags",
-				"ModularGameplay"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
