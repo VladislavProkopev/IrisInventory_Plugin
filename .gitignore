@@ -1,0 +1,25 @@
+# Временные папки и кэш движка
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+
+# Временные папки модулей (Game Features / Plugins)
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+Plugins/*/Saved/
+
+# Файлы IDE (Rider, Visual Studio)
+.idea/
+.vscode/
+.vs/
+*.sln
+*.suo
+*.workspace
+
+# Логи, дампы и кэш ОС
+*.log
+*.dmp
+.DS_Store
+Thumbs.db
