@@ -16,7 +16,7 @@ class UPawnExtensionComponent : public UPawnComponent , public IGameFrameworkIni
 public:
 	// Sets default values for this component's properties
 	UPawnExtensionComponent(const FObjectInitializer& Initializer);
-
+	static const FName NAME_ActorFeatureName;
 protected:
 	virtual void BeginPlay() override;
 
@@ -31,4 +31,6 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "Prpject|PawnExtensionComponent")
 	static UPawnExtensionComponent* FindPawnExtensionComponent(const AActor* Actor){return Actor?Actor->FindComponentByClass<UPawnExtensionComponent>():nullptr;}
 	
+	virtual void OnRegister() override;
+	virtual void OnUnregister() override;
 };

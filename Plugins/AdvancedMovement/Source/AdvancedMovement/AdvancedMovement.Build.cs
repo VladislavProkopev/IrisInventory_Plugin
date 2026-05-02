@@ -28,7 +28,8 @@ public class AdvancedMovement : ModuleRules
 				"Core",
 				"EnhancedInput",
 				"GameplayTags",
-				"ModularGameplay"
+				"ModularGameplay",
+				"CoreFeatures", "GameFeatures",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

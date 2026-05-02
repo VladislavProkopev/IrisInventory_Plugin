@@ -252,6 +252,14 @@
 		{
 			"Name": "ModularGameplay",
 			"Enabled": true
+		},
+		{
+			"Name": "CoreFeatures",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_AdvancedMovement",
+			"Enabled": true
 		}
 	]
 }

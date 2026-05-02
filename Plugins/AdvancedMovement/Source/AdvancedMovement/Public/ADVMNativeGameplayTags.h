@@ -1,9 +1,0 @@
-#pragma once
-#include "NativeGameplayTags.h"
-
-namespace ADVMInputTags
-{
-	ADVANCEDMOVEMENT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Action_Walk);
-	ADVANCEDMOVEMENT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Action_Look);
-	ADVANCEDMOVEMENT_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Action_Jump);
-}

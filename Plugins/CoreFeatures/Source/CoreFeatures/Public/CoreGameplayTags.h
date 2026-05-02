@@ -1,7 +1,19 @@
 #pragma once
+#include "NativeGameplayTags.h"
 
-class CoreGameplayTags
+namespace CoreGameplayTags
 {
-public:
-	
+	namespace ADVMInputTags
+	{
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Action_Move);
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Action_Look);
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Action_Jump);
+	}
+	namespace InitStateTags
+	{
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InitState_Spawned);
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InitState_DataAvaliable);
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InitState_DataInitialized);
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(InitState_GameplayReady);
+	}
 };
