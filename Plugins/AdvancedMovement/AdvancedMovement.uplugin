@@ -34,6 +34,10 @@
 		{
 			"Name" : "CoreFeatures",
 			"Enabled" : true
-		}
+		},
+      {
+        "Name" : "GameFeatures",
+        "Enabled" : true
+      }
 	]
 }

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "IrisInventoryItemFragment.h"
+#include "CoreFeatures/Public/Inventory/Items/IrisInventoryItemFragment.h"
 #include "IrisInventoryFragment_Stackable.generated.h"
 
 /**

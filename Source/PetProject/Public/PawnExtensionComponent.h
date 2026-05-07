@@ -22,10 +22,10 @@ protected:
 
 	//~ IGameFrameworkInitStateInterface
 	virtual FName GetFeatureName() const override;
-	UE_API virtual bool CanChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState, FGameplayTag DesiredState) const override;
-	UE_API virtual void HandleChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState, FGameplayTag DesiredState) override;
-	UE_API virtual void OnActorInitStateChanged(const FActorInitStateChangedParams& Params) override;
-	UE_API virtual void CheckDefaultInitialization() override;
+	virtual bool CanChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState, FGameplayTag DesiredState) const override;
+	virtual void HandleChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState, FGameplayTag DesiredState) override;
+	virtual void OnActorInitStateChanged(const FActorInitStateChangedParams& Params) override;
+	virtual void CheckDefaultInitialization() override;
 	//~ End IGameFrameworkInitStateInterface
 	
 	UFUNCTION(BlueprintPure, Category = "Prpject|PawnExtensionComponent")

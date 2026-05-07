@@ -23,3 +23,6 @@ Plugins/*/Saved/
 *.dmp
 .DS_Store
 Thumbs.db
+
+.asset
+.umap
