@@ -15,5 +15,31 @@ namespace CoreGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(InitState_DataInitialized,"InitState.DataInitialized", "Actor or Component data initialized");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(InitState_GameplayReady,"InitState.GameplayReady", "Actor or Component game play ready");
 	}
+	
+	
+	
+	namespace InventoryTags
+	{
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_MaxStackSize, "Item.Stat.MaxStackSize");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Weight, "Item.Stat.Weight");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_BaseValue, "Item.Stat.BaseValue");
+		
+		UE_DEFINE_GAMEPLAY_TAG(Item_State_StackCount, "Item.State.StackCount");
+		UE_DEFINE_GAMEPLAY_TAG(Item_State_Durability, "Item.State.Durability");
+		UE_DEFINE_GAMEPLAY_TAG(Item_State_Level, "Item.State.Level");
+		
+		UE_DEFINE_GAMEPLAY_TAG(Item_Type_Weapon, "Item.Type.Weapon");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Type_Consumable, "Item.Type.Consumable");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Type_Material, "Item.Type.Material");
+		
+		UE_DEFINE_GAMEPLAY_TAG(Item_Slot_PrimaryWeapon, "Item.Slot.PrimaryWeapon");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Slot_SecondaryWeapon, "Item.Slot.SecondaryWeapon");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Slot_Backpack, "Item.Slot.Backpack");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Slot_Head, "Item.Slot.Head");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Slot_Chest, "Item.Slot.Chest");
+		
+		UE_DEFINE_GAMEPLAY_TAG(Event_Inventory_ItemAdded, "Item.Inventory.ItemAdded");
+		UE_DEFINE_GAMEPLAY_TAG(Event_Inventory_ItemRemoved, "Item.Inventory.ItemRemoved");
+	}
 }
 

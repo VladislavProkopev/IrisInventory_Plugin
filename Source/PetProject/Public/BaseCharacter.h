@@ -22,6 +22,8 @@ public:
 private:
 	UPROPERTY(EditDefaultsOnly,Category="GameFeatures")
 	TObjectPtr<UPawnExtensionComponent> PawnExtensionComponent;
+	
+	
 };
 
 

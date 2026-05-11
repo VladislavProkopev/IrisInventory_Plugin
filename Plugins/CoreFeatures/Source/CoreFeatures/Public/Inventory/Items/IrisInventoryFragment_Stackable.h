@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class IRISINVENTORY_API UIrisInventoryFragment_Stackable : public UIrisInventoryItemFragment
+class COREFEATURES_API UIrisInventoryFragment_Stackable : public UIrisInventoryItemFragment
 {
 	GENERATED_BODY()
 public:
