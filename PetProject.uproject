@@ -1,269 +1,269 @@
 {
-  "FileVersion": 3,
-  "EngineAssociation": "5.7",
-  "Category": "",
-  "Description": "",
-  "Modules": [
-    {
-      "Name": "PetProject",
-      "Type": "Runtime",
-      "LoadingPhase": "Default"
-    }
-  ],
-  "Plugins": [
-    {
-      "Name": "ModelingToolsEditorMode",
-      "Enabled": true
-    },
-    {
-      "Name": "GameFeatures",
-      "Enabled": true
-    },
-    {
-      "Name": "AbilitySystemGameFeatureActions",
-      "Enabled": true
-    },
-    {
-      "Name": "ModularGameplay",
-      "Enabled": true
-    },
-    {
-      "Name": "Iris",
-      "Enabled": true
-    },
-    {
-      "Name": "AsyncMessageSystem",
-      "Enabled": true
-    },
-    {
-      "Name": "AsyncMessageSystemTests",
-      "Enabled": true
-    },
-    {
-      "Name": "AudioModulation",
-      "Enabled": true
-    },
-    {
-      "Name": "AudioGameplay",
-      "Enabled": true
-    },
-    {
-      "Name": "AudioGameplayVolume",
-      "Enabled": true
-    },
-    {
-      "Name": "CascadeToNiagaraConverter",
-      "Enabled": true
-    },
-    {
-      "Name": "Chooser",
-      "Enabled": true
-    },
-    {
-      "Name": "CommonUI",
-      "Enabled": true
-    },
-    {
-      "Name": "DrawDebugLibrary",
-      "Enabled": true
-    },
-    {
-      "Name": "EOSOverlayInputProvider",
-      "Enabled": true
-    },
-    {
-      "Name": "EOSVoiceChat",
-      "Enabled": true
-    },
-    {
-      "Name": "EpicStageApp",
-      "Enabled": true
-    },
-    {
-      "Name": "ExternalGPUStatistics",
-      "Enabled": true,
-      "SupportedTargetPlatforms": [
-        "Win64",
-        "Linux"
-      ]
-    },
-    {
-      "Name": "WebSocketNetworking",
-      "Enabled": true
-    },
-    {
-      "Name": "FastBuildController",
-      "Enabled": true
-    },
-    {
-      "Name": "GameplayStateTree",
-      "Enabled": true
-    },
-    {
-      "Name": "GPULightmass",
-      "Enabled": true
-    },
-    {
-      "Name": "HierarchyTable",
-      "Enabled": true
-    },
-    {
-      "Name": "HierarchyTableAnimation",
-      "Enabled": true
-    },
-    {
-      "Name": "InstancedActors",
-      "Enabled": true
-    },
-    {
-      "Name": "Locomotor",
-      "Enabled": true
-    },
-    {
-      "Name": "MassAI",
-      "Enabled": true
-    },
-    {
-      "Name": "MassCrowd",
-      "Enabled": true
-    },
-    {
-      "Name": "MassEntity",
-      "Enabled": true
-    },
-    {
-      "Name": "MassGameplay",
-      "Enabled": true
-    },
-    {
-      "Name": "MotionTrajectory",
-      "Enabled": true
-    },
-    {
-      "Name": "MotionWarping",
-      "Enabled": true
-    },
-    {
-      "Name": "Mover",
-      "Enabled": true
-    },
-    {
-      "Name": "MoverExamples",
-      "Enabled": true
-    },
-    {
-      "Name": "MoverIntegrations",
-      "Enabled": true
-    },
-    {
-      "Name": "MoverAnimNext",
-      "Enabled": true
-    },
-    {
-      "Name": "MoverTests",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineServicesEOS",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineServicesEOSGS",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineServicesEpicCommon",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineServicesNull",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineSubsystemEOS",
-      "Enabled": true
-    },
-    {
-      "Name": "OnlineSubsystemSteam",
-      "Enabled": true
-    },
-    {
-      "Name": "PoseSearch",
-      "Enabled": true
-    },
-    {
-      "Name": "SmartObjects",
-      "Enabled": true
-    },
-    {
-      "Name": "SocketSubsystemEOS",
-      "Enabled": true
-    },
-    {
-      "Name": "SocketSubsystemSteamIP",
-      "Enabled": true
-    },
-    {
-      "Name": "StateGraph",
-      "Enabled": true
-    },
-    {
-      "Name": "SteamController",
-      "Enabled": true
-    },
-    {
-      "Name": "SteamSockets",
-      "Enabled": true
-    },
-    {
-      "Name": "StructUtils",
-      "Enabled": true
-    },
-    {
-      "Name": "TargetingSystem",
-      "Enabled": true
-    },
-    {
-      "Name": "ModelViewViewModel",
-      "Enabled": true
-    },
-    {
-      "Name": "ModelViewViewModelPreview",
-      "Enabled": true
-    },
-    {
-      "Name": "WinDualShock",
-      "Enabled": true,
-      "SupportedTargetPlatforms": [
-        "Win64"
-      ]
-    },
-    {
-      "Name": "AdvancedMovement",
-      "Enabled": true
-    },
-    {
-      "Name": "ModularGameplayActors",
-      "Enabled": true
-    },
-    {
-      "Name": "CoreFeatures",
-      "Enabled": true
-    },
-    {
-      "Name": "GF_AdvancedMovement",
-      "Enabled": true
-    },
-    {
-      "Name": "VisualStudioTools",
-      "Enabled": false,
-      "SupportedTargetPlatforms": [
-        "Win64"
-      ]
-    }
-  ],
-  "TargetPlatforms": [],
-  "AdditionalRootDirectories": [],
-  "AdditionalPluginDirectories": [],
-  "EpicSampleNameHash": ""
+	"FileVersion": 3,
+	"EngineAssociation": "{0D08C3A1-45B8-BA1C-D1C2-A08E0AB0F42E}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "PetProject",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true
+		},
+		{
+			"Name": "GameFeatures",
+			"Enabled": true
+		},
+		{
+			"Name": "AbilitySystemGameFeatureActions",
+			"Enabled": true
+		},
+		{
+			"Name": "ModularGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "Iris",
+			"Enabled": true
+		},
+		{
+			"Name": "AsyncMessageSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "AsyncMessageSystemTests",
+			"Enabled": true
+		},
+		{
+			"Name": "AudioModulation",
+			"Enabled": true
+		},
+		{
+			"Name": "AudioGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "AudioGameplayVolume",
+			"Enabled": true
+		},
+		{
+			"Name": "CascadeToNiagaraConverter",
+			"Enabled": true
+		},
+		{
+			"Name": "Chooser",
+			"Enabled": true
+		},
+		{
+			"Name": "CommonUI",
+			"Enabled": true
+		},
+		{
+			"Name": "DrawDebugLibrary",
+			"Enabled": true
+		},
+		{
+			"Name": "EOSOverlayInputProvider",
+			"Enabled": true
+		},
+		{
+			"Name": "EOSVoiceChat",
+			"Enabled": true
+		},
+		{
+			"Name": "EpicStageApp",
+			"Enabled": true
+		},
+		{
+			"Name": "ExternalGPUStatistics",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Linux"
+			]
+		},
+		{
+			"Name": "WebSocketNetworking",
+			"Enabled": true
+		},
+		{
+			"Name": "FastBuildController",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayStateTree",
+			"Enabled": true
+		},
+		{
+			"Name": "GPULightmass",
+			"Enabled": true
+		},
+		{
+			"Name": "HierarchyTable",
+			"Enabled": true
+		},
+		{
+			"Name": "HierarchyTableAnimation",
+			"Enabled": true
+		},
+		{
+			"Name": "InstancedActors",
+			"Enabled": true
+		},
+		{
+			"Name": "Locomotor",
+			"Enabled": true
+		},
+		{
+			"Name": "MassAI",
+			"Enabled": true
+		},
+		{
+			"Name": "MassCrowd",
+			"Enabled": true
+		},
+		{
+			"Name": "MassEntity",
+			"Enabled": true
+		},
+		{
+			"Name": "MassGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "MotionTrajectory",
+			"Enabled": true
+		},
+		{
+			"Name": "MotionWarping",
+			"Enabled": true
+		},
+		{
+			"Name": "Mover",
+			"Enabled": true
+		},
+		{
+			"Name": "MoverExamples",
+			"Enabled": true
+		},
+		{
+			"Name": "MoverIntegrations",
+			"Enabled": true
+		},
+		{
+			"Name": "MoverAnimNext",
+			"Enabled": true
+		},
+		{
+			"Name": "MoverTests",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineServicesEOS",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineServicesEOSGS",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineServicesEpicCommon",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineServicesNull",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemEOS",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemSteam",
+			"Enabled": true
+		},
+		{
+			"Name": "PoseSearch",
+			"Enabled": true
+		},
+		{
+			"Name": "SmartObjects",
+			"Enabled": true
+		},
+		{
+			"Name": "SocketSubsystemEOS",
+			"Enabled": true
+		},
+		{
+			"Name": "SocketSubsystemSteamIP",
+			"Enabled": true
+		},
+		{
+			"Name": "StateGraph",
+			"Enabled": true
+		},
+		{
+			"Name": "SteamController",
+			"Enabled": true
+		},
+		{
+			"Name": "SteamSockets",
+			"Enabled": true
+		},
+		{
+			"Name": "StructUtils",
+			"Enabled": true
+		},
+		{
+			"Name": "TargetingSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "ModelViewViewModel",
+			"Enabled": true
+		},
+		{
+			"Name": "ModelViewViewModelPreview",
+			"Enabled": true
+		},
+		{
+			"Name": "WinDualShock",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "AdvancedMovement",
+			"Enabled": true
+		},
+		{
+			"Name": "ModularGameplayActors",
+			"Enabled": true
+		},
+		{
+			"Name": "CoreFeatures",
+			"Enabled": true
+		},
+		{
+			"Name": "GF_AdvancedMovement",
+			"Enabled": true
+		},
+		{
+			"Name": "VisualStudioTools",
+			"Enabled": false,
+			"SupportedTargetPlatforms": [
+				"Win64"
+			]
+		}
+	],
+	"TargetPlatforms": [],
+	"AdditionalRootDirectories": [],
+	"AdditionalPluginDirectories": [],
+	"EpicSampleNameHash": ""
 }

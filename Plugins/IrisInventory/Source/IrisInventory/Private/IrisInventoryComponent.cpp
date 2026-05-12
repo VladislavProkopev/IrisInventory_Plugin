@@ -1,4 +1,5 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿/*TODO Refactor Component
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "IrisInventoryComponent.h"
@@ -23,7 +24,7 @@ int32 UIrisInventoryComponent::GetItemStat(int32 SlotIndex, FGameplayTag StatTag
 {
 	if (Inventory.Entries.IsValidIndex(SlotIndex))
 	{
-		return Inventory.Entries[SlotIndex].GetStatValue(StatTag);
+		//return Inventory.Entries[SlotIndex].GetStatValue(StatTag);
 	}
 	return 0;
 }
@@ -32,7 +33,7 @@ void UIrisInventoryComponent::ModifyItemStat(int32 SlotIndex, FGameplayTag StatT
 {
 	if (!GetOwner()->HasAuthority() || !Inventory.Entries.IsValidIndex(SlotIndex)) return;
 	
-	FIrisInventoryEntry& Entry = Inventory.Entries[SlotIndex];
+	/*FIrisInventoryEntry& Entry = Inventory.Entries[SlotIndex];
 	
 	for (FIrisInventoryStatValue& Stat : Entry.DynamicStats)
 	{
@@ -43,14 +44,14 @@ void UIrisInventoryComponent::ModifyItemStat(int32 SlotIndex, FGameplayTag StatT
 			Inventory.MarkItemDirty(Entry);
 			return;
 		}
-	}
+	}#1#
 }
 
 const UIrisInventoryItemDefinition* UIrisInventoryComponent::GetItemDefAtSlot(int32 SlotIndex) const
 {
 	if (Inventory.Entries.IsValidIndex(SlotIndex))
 	{
-		return Inventory.Entries[SlotIndex].ItemDef;
+		//return Inventory.Entries[SlotIndex].ItemDef;
 	}
 	return nullptr;
 }
@@ -143,7 +144,7 @@ void UIrisInventoryComponent::AddEntry(UIrisInventoryItemDefinition* ItemDef, in
 	// Но для базовой операции делаем синхронно:
 	
 	//Ищем неполные стаки
-	for (FIrisInventoryEntry& Entry: Inventory.Entries)
+	/*for (FIrisInventoryEntry& Entry: Inventory.Entries)
 	{
 		if (Entry.ItemDef == ItemDef && Entry.StackCount < MaxStackSize)
 		{
@@ -162,8 +163,10 @@ void UIrisInventoryComponent::AddEntry(UIrisInventoryItemDefinition* ItemDef, in
 		const int32 AmmountToFill = FMath::Min(CountToAdd,MaxStackSize);
 		Inventory.CreateNewEntry(ItemDef,AmmountToFill);
 		CountToAdd -= AmmountToFill;
-	}
+	}#1#
 }
+
+//TODO Добавить Remove и делегат если StackCount == 0
 
 int32 UIrisInventoryComponent::GetMaxStackSize(UIrisInventoryItemDefinition* ItemDef) const
 {
@@ -188,11 +191,11 @@ void UIrisInventoryComponent::AddItemDefinition(const UIrisInventoryItemDefiniti
 	// Если это оружие, инициализируем базовые динамические статы
 	// NewEntry.DynamicStats.Add({ TAG_Weapon_Ammo, 30 });
 	
-	int32 Index = Inventory.Entries.Add(NewEntry);
+	//int32 Index = Inventory.Entries.Add(NewEntry);
 	
 	// ТРИГГЕР IRIS: Мы говорим движку, что конкретно этот элемент массива изменился.
 	// Iris мгновенно соберет дельту и отправит клиентам без Legacy Polling'а.
-	Inventory.MarkItemDirty(Inventory.Entries[Index]);
+	//Inventory.MarkItemDirty(Inventory.Entries[Index]);
 }
 
 void UIrisInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -212,4 +215,5 @@ void UIrisInventoryComponent::BeginPlay()
 	ensure(TryToChangeInitState(CoreGameplayTags::InitStateTags::InitState_Spawned));
 	CheckDefaultInitialization();
 }
+*/
 

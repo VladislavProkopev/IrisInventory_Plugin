@@ -39,6 +39,8 @@ public class CoreFeatures : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				//TODO затычка пересмотреть
+				"GameplayAbilities",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

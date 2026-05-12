@@ -41,5 +41,10 @@ namespace CoreGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG(Event_Inventory_ItemAdded, "Item.Inventory.ItemAdded");
 		UE_DEFINE_GAMEPLAY_TAG(Event_Inventory_ItemRemoved, "Item.Inventory.ItemRemoved");
 	}
+
+	namespace GMR
+	{
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Inventory_Message_Updated, "Inventory.Message.Updated","Send Gameplay Message Router when Inventory Updated");
+	}
 }
 

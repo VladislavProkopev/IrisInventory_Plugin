@@ -40,4 +40,10 @@ namespace CoreGameplayTags
 		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Inventory_ItemAdded);
 		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Inventory_ItemRemoved);
 	}
+
+	namespace GMR
+	{
+		COREFEATURES_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Inventory_Message_Updated);
+		
+	}
 };
