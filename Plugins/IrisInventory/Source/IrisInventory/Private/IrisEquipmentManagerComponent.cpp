@@ -1,93 +1,84 @@
 ﻿#include "IrisEquipmentManagerComponent.h"
-
 #include "AbilitySystemGlobals.h"
 #include "CoreGameplayTags.h"
 #include "IrisInventoryComponent.h"
 #include "Components/GameFrameworkComponentManager.h"
+#include "Net/UnrealNetwork.h"
 #include "Logging/LogMacros.h"
+#include "IrisInventoryComponent.h"
+#include "IrisInventoryTypes.h"
 
-DEFINE_LOG_CATEGORY_STATIC(Log_IrisEquipmentManagerComponent,All,All);
+
+DEFINE_LOG_CATEGORY_STATIC(Log_IrisEquipmentManagerComponent, All, All);
 	
 const FName UIrisEquipmentManagerComponent::NAME_ActorFeatureName("EquipmentManager");
 
 UIrisEquipmentManagerComponent::UIrisEquipmentManagerComponent(const FObjectInitializer& OI) : Super(OI)
 {
 	PrimaryComponentTick.bStartWithTickEnabled = false;
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 	bWantsInitializeComponent = true;
 	SetIsReplicatedByDefault(true);
 	
 }
 
+void UIrisEquipmentManagerComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	//DI: Привязываем структуру к компоненту
+	EquipmentList.OwnerComponent = this;
+}
+
+void UIrisEquipmentManagerComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ThisClass,EquipmentList);
+}
+
+// ----------------------------------------------------------------------
+// МУТАТОРЫ ЭКИПИРОВКИ (Сервер)
+// ----------------------------------------------------------------------
+
 UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItem(const UIrisInventoryItemDefinition* ItemDef)
 {
-	if (!ItemDef || !CachedASC) return nullptr;
+	if(!ItemDef || !CachedASC || !GetOwner()->HasAuthority()) return nullptr;
 	
-	//Ищем фрагмент с правилами экипировки
-	const UIrisInventoryItemFragment_Equippable* EquipFrag = ItemDef->FindFragmentByClass<UIrisInventoryItemFragment_Equippable>();
-	if (!EquipFrag) return nullptr;
+	//TODO Дописать логику UnequipItem Если слот уже занят
 	
-	//TODO Доделать логику проверки не занят ли слот и перед экипировкой вызвать UnequipItem
+	//Делигируем создание инстанса в L2 (FastArray)
+	//В будущем мы сможем читать класс инстанса (TSubclassOf) из ItemDef (из фрагмента)
+	//Пока используем базовый класс
+	UIrisEquipmentInstance* NewInstance = EquipmentList.AddEntry(UIrisEquipmentInstance::StaticClass());
 	
-	//Инстансируем транзитный контроллер (UObject)
-	UIrisEquipmentInstance* NewInstance = NewObject<UIrisEquipmentInstance>(this);
-	
-	//Спавним визуальную часть (Оружие) если она есть
-	if (!EquipFrag->EquipmentPrefab.IsNull())
+	//Инициализируем UObject данными До того, как он попробует заспавнить меш
+	if (NewInstance)
 	{
-		//TODO переделать на асинхронную загрузку позже
-		if (UClass* ActorClass = EquipFrag->EquipmentPrefab.LoadSynchronous())
-		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = GetOwner();
-			SpawnParams.Instigator = Cast<APawn>(GetOwner());
-			
-			NewInstance->GrantEquipmentDef(CachedASC,ItemDef);
-			
-			//TODO Добавить логику аттача к сокету
-		}
+		NewInstance->GrantEquipmentDef(CachedASC,ItemDef);
+		NewInstance->SpawnEquipmentDef();
 	}
-	
-	//Инжектим GAS (абилки, эффекты)
-	NewInstance->GrantEquipmentDef(CachedASC,ItemDef);
-	
-	//Сохраняем стейт
-	ActiveEquipment.Add(NewInstance);
 	
 	return NewInstance;
 }
 
 void UIrisEquipmentManagerComponent::UnequipItem(UIrisEquipmentInstance* ItemInstance)
 {
-	if (!ItemInstance || !ActiveEquipment.Contains(ItemInstance)) return;
+	if (!ItemInstance || !GetOwner()->HasAuthority()) return;
 	
-	//Отвязываем GAS (забираем абилки, снимаем баффы)
-	ItemInstance->RevokeEquipmentDef();
-	
-	//Уничтожаем визуальную часть (Actor)
-	if (ItemInstance->SpawnedActor)
-	{
-		ItemInstance->SpawnedActor->Destroy();
-		ItemInstance->SpawnedActor = nullptr;
-	}
-	
-	//Убираем из трекинга (GC очистит UObject в следующем цикле)
-	ActiveEquipment.Remove(ItemInstance);
+	//Делигируем удаление в L2
+	//Метод RemoveEntry сам вызовет DestroyEquipmentDef перед очисткой памяти.
+	EquipmentList.RemoveEntry(ItemInstance);
 }
+
+// ----------------------------------------------------------------------
+// ИНИЦИАЛИЗАЦИЯ И GFCM
+// ----------------------------------------------------------------------
 
 void UIrisEquipmentManagerComponent::InitializeEquipmentSystem()
 {
 	//Безопасное кеширование ASC (Теперь он на 100% готов)
 	CachedASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetOwner());
 	check(CachedASC);
-	
-	//Подписка на ивенты инвентаря
-	UIrisInventoryComponent* InventoryComponent = GetOwner()->FindComponentByClass<UIrisInventoryComponent>();
-	if (InventoryComponent)
-	{
-		//Делегат сработает если предмет пропал (уничтожен/выброшен/продан)
-		InventoryComponent->OnItemRemoved.AddDynamic(this,&ThisClass::HandleItemRemovedFromInventory);
-	}
+		
 	//Оповкщаем GFCM, что EquipmentManager готов к геймплею
 	UGameFrameworkComponentManager* GFCM = UGameFrameworkComponentManager::GetForActor(GetOwner());
 	if (GFCM)
@@ -99,25 +90,6 @@ void UIrisEquipmentManagerComponent::InitializeEquipmentSystem()
 			CoreGameplayTags::InitStateTags::InitState_GameplayReady);
 		
 	}
-}
-
-void UIrisEquipmentManagerComponent::HandleItemRemovedFromInventory(const UIrisInventoryItemDefinition* RemovedItemDef)
-{
-	//Логика защиты: если удаленный предмет сейчас в руках - снимаем его
-	for (UIrisEquipmentInstance* ItemInstance : ActiveEquipment)
-	{
-		if (ItemInstance && ItemInstance->GetItemDef() == RemovedItemDef)
-		{
-			UnequipItem(ItemInstance);
-			break;
-		}
-	}
-}
-
-void UIrisEquipmentManagerComponent::BeginPlay()
-{
-	Super::BeginPlay();
-	
 }
 
 FName UIrisEquipmentManagerComponent::GetFeatureName() const

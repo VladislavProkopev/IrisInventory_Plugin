@@ -4,7 +4,7 @@
 #include "IrisEquipmentTypes.generated.h"
 
 class UIrisEquipmentInstance;
-class UIrisEquipmentManagerComponent;
+class UActorComponent;
 
 // ---------------------------------------------------------
 // 1. ЭЛЕМЕНТ ЭКИПИРОВКИ (Один слот в руках/на теле)
@@ -36,7 +36,7 @@ struct FIrisEquipmentList : public FFastArraySerializer
 	
 	//Ссылка на компонент, который владеет этим массивом
 	UPROPERTY(NotReplicated)
-	TObjectPtr<UIrisEquipmentManagerComponent> OwnerComponent = nullptr;
+	TObjectPtr<UActorComponent> OwnerComponent = nullptr;
 	
 	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParams)
 	{

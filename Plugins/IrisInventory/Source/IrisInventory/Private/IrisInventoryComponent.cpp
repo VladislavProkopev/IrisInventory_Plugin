@@ -1,30 +1,53 @@
-﻿/*TODO Refactor Component
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "IrisInventoryComponent.h"
-
-#include "CoreGameplayTags.h"
+﻿#include "IrisInventoryComponent.h"
+#include "CoreFeatures/Public/CoreGameplayTags.h"
 #include "Components/GameFrameworkComponentDelegates.h"
 #include "Components/GameFrameworkComponentManager.h"
 #include "Inventory/Items/IrisInventoryFragment_Stats.h"
 #include "Net/UnrealNetwork.h"
-#include "Net/Serialization/FastArraySerializer.h"
 
+DEFINE_LOG_CATEGORY_STATIC(Log_IrisInventoryComponent,All,All)
+
+//TODO ПРОВЕРИТЬ ВО ВСЕХ CANCHANGEINITSTATE потому что после рефактора мог изменить имя а там используется старое и логика будет сломана
 const FName UIrisInventoryComponent::NAME_ActorFeatureName("IrisInventory");
 
-UIrisInventoryComponent::UIrisInventoryComponent(const FObjectInitializer& InitializerModule) : Super(InitializerModule)
+UIrisInventoryComponent::UIrisInventoryComponent(const FObjectInitializer& OI) : Super(OI)
 {
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
 }
 
+void UIrisInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ThisClass,Inventory);
+}
+
+void UIrisInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+		
+	Inventory.OnListChanged.AddUObject(this,&UIrisInventoryComponent::BroadcastInventoryUpdate);
+	
+	BindOnActorInitStateChanged(NAME_None,FGameplayTag(),false);
+	ensure(TryToChangeInitState(CoreGameplayTags::InitStateTags::InitState_Spawned));
+	CheckDefaultInitialization();
+}
+
+void UIrisInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UnregisterInitStateFeature();
+	Super::EndPlay(EndPlayReason);
+}
+
+// ----------------------------------------------------------------------
+// ИНТЕРФЕЙС ИНВЕНТАРЯ (ЧТЕНИЕ И МУТАЦИЯ)
+// ----------------------------------------------------------------------
 int32 UIrisInventoryComponent::GetItemStat(int32 SlotIndex, FGameplayTag StatTag) const
 {
 	if (Inventory.Entries.IsValidIndex(SlotIndex))
 	{
-		//return Inventory.Entries[SlotIndex].GetStatValue(StatTag);
+		return Inventory.Entries[SlotIndex].GetStatValue(StatTag);
 	}
 	return 0;
 }
@@ -33,42 +56,97 @@ void UIrisInventoryComponent::ModifyItemStat(int32 SlotIndex, FGameplayTag StatT
 {
 	if (!GetOwner()->HasAuthority() || !Inventory.Entries.IsValidIndex(SlotIndex)) return;
 	
-	/*FIrisInventoryEntry& Entry = Inventory.Entries[SlotIndex];
+	FIrisInventoryEntry& Entry = Inventory.Entries[SlotIndex];
+	Entry.AddStat(StatTag,Delta); //Используем метод из структуры
 	
-	for (FIrisInventoryStatValue& Stat : Entry.DynamicStats)
-	{
-		if (Stat.StatTag == StatTag)
-		{
-			Stat.Value += Delta;
-			
-			Inventory.MarkItemDirty(Entry);
-			return;
-		}
-	}#1#
+	Inventory.MarkItemDirty(Entry);
 }
 
 const UIrisInventoryItemDefinition* UIrisInventoryComponent::GetItemDefAtSlot(int32 SlotIndex) const
 {
 	if (Inventory.Entries.IsValidIndex(SlotIndex))
 	{
-		//return Inventory.Entries[SlotIndex].ItemDef;
+		return Inventory.Entries[SlotIndex].ItemDef.Get();
 	}
 	return nullptr;
 }
 
+int32 UIrisInventoryComponent::GetMaxStackSize(const UIrisInventoryItemDefinition* ItemDef) const
+{
+	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
+	{
+		return FMath::Max(1,StatsFrag->GetItemStatByTag(CoreGameplayTags::InventoryTags::Item_Stat_MaxStackSize));
+	}
+	return 1;
+}
+
+// ----------------------------------------------------------------------
+// ДОБАВЛЕНИЕ ЛУТА
+// ----------------------------------------------------------------------
+void UIrisInventoryComponent::AddEntry(const UIrisInventoryItemDefinition* ItemDef, int32 CountToAdd)
+{
+	if (!ItemDef || CountToAdd <= 0 || HasAuthority()) return;
+	
+	const int32 MaxStackSize = GetMaxStackSize(ItemDef);
+	
+	for (FIrisInventoryEntry& Entry : Inventory.Entries)
+	{
+		if (Entry.ItemDef == ItemDef && Entry.StackCount < MaxStackSize)
+		{
+			const int32 AmmountToFill = FMath::Min(CountToAdd,MaxStackSize - Entry.StackCount);
+			Inventory.AddAmountToEntry(Entry,AmmountToFill);
+		
+			CountToAdd -= AmmountToFill;
+			if (CountToAdd <=0) return;
+		}
+	}
+
+	while (CountToAdd > 0)
+	{
+		const int32 AmmountToFill = FMath::Min(CountToAdd,MaxStackSize);
+		Inventory.CreateNewEntry(ItemDef,AmmountToFill);
+		CountToAdd -= AmmountToFill;
+	}
+}
+
+// ----------------------------------------------------------------------
+// ОПОВЕЩЕНИЯ ДЛЯ L3/L4 (GMR & Делегаты)
+// ----------------------------------------------------------------------
+void UIrisInventoryComponent::BroadcastInventoryUpdate(const UIrisInventoryItemDefinition* ItemDef, int32 NewCount,EIrisInventoryChangeType ChangeType)
+{
+	if (!ItemDef) return;
+
+	switch (ChangeType)
+	{
+	case EIrisInventoryChangeType::Added :
+		OnItemAdded.Broadcast(ItemDef,NewCount);
+		break;
+	case EIrisInventoryChangeType::Removed :
+		OnItemRemoved.Broadcast(ItemDef);
+		break;
+	case EIrisInventoryChangeType::Updated :
+		OnItemUpdated.Broadcast(ItemDef,NewCount);
+		break;
+	}
+	
+	//TODO в будущем здесь будет бродкаст в GameplayMessageRouter для обновления UI
+}
+
+// ----------------------------------------------------------------------
+// GAME FEATURES INIT STATE
+// ----------------------------------------------------------------------
 FName UIrisInventoryComponent::GetFeatureName() const
 {
-	return IGameFrameworkInitStateInterface::GetFeatureName();
+	return NAME_ActorFeatureName;
 }
 
 bool UIrisInventoryComponent::CanChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState,
 	FGameplayTag DesiredState) const
 {
 	check(Manager);
-	
 	APawn* Pawn = GetPawn<APawn>();
 	if (!Pawn) return false;
-
+	
 	if (CurrentState == CoreGameplayTags::InitStateTags::InitState_Spawned && DesiredState == CoreGameplayTags::InitStateTags::InitState_DataAvaliable)
 	{
 		return Manager->HasFeatureReachedInitState(Pawn,FName("PawnExtension"),CoreGameplayTags::InitStateTags::InitState_DataAvaliable);
@@ -79,7 +157,7 @@ bool UIrisInventoryComponent::CanChangeInitState(UGameFrameworkComponentManager*
 	}
 	if (CurrentState == CoreGameplayTags::InitStateTags::InitState_DataInitialized && DesiredState == CoreGameplayTags::InitStateTags::InitState_GameplayReady)
 	{
-		return true;
+		return true;		
 	}
 	return false;
 }
@@ -87,23 +165,13 @@ bool UIrisInventoryComponent::CanChangeInitState(UGameFrameworkComponentManager*
 void UIrisInventoryComponent::HandleChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState,
 	FGameplayTag DesiredState)
 {
-	if (CurrentState == CoreGameplayTags::InitStateTags::InitState_DataInitialized)
-	{
-		//TODO
-		// КРИТИЧЕСКИЙ МОМЕНТ ДЛЯ IRIS:
-		// Именно здесь мы должны заспавнить стартовый лут (если он есть).
-		// Добавление в массив и MarkItemDirty произойдут ДО перехода в GameplayReady,
-		// что гарантирует отсутствие race conditions в NetSerializer.
-        
-		// Пример: AddItemDefinition(StarterWeaponDef, 1);
-	}
+	if (CurrentState == CoreGameplayTags::InitStateTags::InitState_DataInitialized){} //Добавить логику если будет необходимо
 }
 
 void UIrisInventoryComponent::OnActorInitStateChanged(const FActorInitStateChangedParams& Params)
 {
 	if (Params.FeatureName != NAME_ActorFeatureName)
 	{
-		//Если PawnExtensionComponent поменял стейт, проверяем можем ли мы продвинуться дальше
 		CheckDefaultInitialization();
 	}
 }
@@ -111,10 +179,10 @@ void UIrisInventoryComponent::OnActorInitStateChanged(const FActorInitStateChang
 void UIrisInventoryComponent::CheckDefaultInitialization()
 {
 	static const TArray<FGameplayTag> StateChain{
-	CoreGameplayTags::InitStateTags::InitState_Spawned,
-	CoreGameplayTags::InitStateTags::InitState_DataAvaliable,
-	CoreGameplayTags::InitStateTags::InitState_DataInitialized,
-	CoreGameplayTags::InitStateTags::InitState_GameplayReady};
+		CoreGameplayTags::InitStateTags::InitState_Spawned,
+		CoreGameplayTags::InitStateTags::InitState_DataAvaliable,
+		CoreGameplayTags::InitStateTags::InitState_DataInitialized,
+		CoreGameplayTags::InitStateTags::InitState_GameplayReady};
 	
 	ContinueInitStateChain(StateChain);
 }
@@ -122,98 +190,9 @@ void UIrisInventoryComponent::CheckDefaultInitialization()
 void UIrisInventoryComponent::OnRegister()
 {
 	Super::OnRegister();
-	
 	RegisterInitStateFeature();
 }
 
-void UIrisInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	UnregisterInitStateFeature();
-	Super::EndPlay(EndPlayReason);
-}
-
-void UIrisInventoryComponent::AddEntry(UIrisInventoryItemDefinition* ItemDef, int32 CountToAdd)
-{
-	if (!ItemDef || CountToAdd<=0 || !HasAuthority()) return;
-	
-	//Читаем Data-Driven лимиты из L1
-	const int32 MaxStackSize = GetMaxStackSize(ItemDef);
-	
-	// В будущем: Если CountToAdd огромный или слотов > 1000, 
-	// здесь мы вызываем UE::Tasks::Launch(UE_SOURCE_LOCATION, [Snapshot]() { ... });
-	// Но для базовой операции делаем синхронно:
-	
-	//Ищем неполные стаки
-	/*for (FIrisInventoryEntry& Entry: Inventory.Entries)
-	{
-		if (Entry.ItemDef == ItemDef && Entry.StackCount < MaxStackSize)
-		{
-			const int32 AmmountToFill = FMath::Min(CountToAdd,MaxStackSize - Entry.StackCount);
-			
-			//Вызываем атомарную операцию из InventoryTypes->InventoryList
-			Inventory.AddAmmountToEntry(Entry,AmmountToFill);
-			
-			CountToAdd -= AmmountToFill;
-			if (CountToAdd <= 0) return;
-		}
-	}
-
-	while (CountToAdd>0)
-	{
-		const int32 AmmountToFill = FMath::Min(CountToAdd,MaxStackSize);
-		Inventory.CreateNewEntry(ItemDef,AmmountToFill);
-		CountToAdd -= AmmountToFill;
-	}#1#
-}
-
-//TODO Добавить Remove и делегат если StackCount == 0
-
-int32 UIrisInventoryComponent::GetMaxStackSize(UIrisInventoryItemDefinition* ItemDef) const
-{
-	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
-	{
-		return FMath::Max(1,StatsFrag->GetItemStatByTag(CoreGameplayTags::InventoryTags::Item_Stat_MaxStackSize));
-	}
-	return 1;
-}
-
-void UIrisInventoryComponent::AddItemDefinition(const UIrisInventoryItemDefinition* ItemDef, int32 Count)
-{
-	if (!ItemDef || Count <-0 || !GetOwner()->HasAuthority()) return;
-	
-	//TODO: Здесь должна быть логика стака
-	// Для примера создаем новую запись
-	
-	FIrisInventoryEntry NewEntry;
-	NewEntry.ItemDef = ItemDef;
-	NewEntry.StackCount = Count;
-	
-	// Если это оружие, инициализируем базовые динамические статы
-	// NewEntry.DynamicStats.Add({ TAG_Weapon_Ammo, 30 });
-	
-	//int32 Index = Inventory.Entries.Add(NewEntry);
-	
-	// ТРИГГЕР IRIS: Мы говорим движку, что конкретно этот элемент массива изменился.
-	// Iris мгновенно соберет дельту и отправит клиентам без Legacy Polling'а.
-	//Inventory.MarkItemDirty(Inventory.Entries[Index]);
-}
-
-void UIrisInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
-	DOREPLIFETIME(ThisClass,Inventory);
-}
 
 
-void UIrisInventoryComponent::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	BindOnActorInitStateChanged(NAME_None,FGameplayTag(),false);
-	
-	ensure(TryToChangeInitState(CoreGameplayTags::InitStateTags::InitState_Spawned));
-	CheckDefaultInitialization();
-}
-*/
 

@@ -6,12 +6,14 @@
 #include "Components/ActorComponent.h"
 #include "CoreFeatures/Public/Inventory/Items/IrisInventoryItemDefinition.h"
 #include "IrisEquipmentInstance.h"
+#include "IrisEquipmentTypes.h"
+#include "Components/GameFrameworkInitStateInterface.h"
 #include "IrisEquipmentManagerComponent.generated.h"
 
 class UAbilitySystemComponent;
-
+class UIrisEquipmentInstance;
 /*
- * L3 Coordinator: Управляет активной экипировкой и интеграцией с GAS
+ * L3 Coordinator: Управляет активной экипировкой (Слотами)
  * Инжектится в Pawn через GameFeatures
  */
 
@@ -42,16 +44,14 @@ public:
 	virtual void OnRegister() override;
 protected:
 	virtual void BeginPlay() override;
-	
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 private:
-	UPROPERTY()
-	TArray<TObjectPtr<UIrisEquipmentInstance>> ActiveEquipment;
+	//L2 База данных
+	UPROPERTY(Replicated)
+	FIrisEquipmentList EquipmentList;
 	
 	UPROPERTY()
 	TObjectPtr<UAbilitySystemComponent> CachedASC;
 	
 	void InitializeEquipmentSystem();
-	
-	UFUNCTION()
-	void HandleItemRemovedFromInventory(const UIrisInventoryItemDefinition* RemovedItemDef);
 };

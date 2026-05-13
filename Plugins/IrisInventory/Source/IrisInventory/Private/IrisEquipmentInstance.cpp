@@ -4,27 +4,41 @@
 #include "IrisEquipmentInstance.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayAbilitySpec.h"
-#include "CoreFeatures/Public/Inventory/Items/IrisInventoryItemFragment_Equippable.h"
+#include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 #include "Inventory/Items/IrisInventoryItemDefinition.h"
-#include "Net/RepLayout.h"
 
 DEFINE_LOG_CATEGORY_STATIC(Log_IrisEquipmentInstance, All, All);
 
-void UIrisEquipmentInstance::OnEquipped()
+UWorld* UIrisEquipmentInstance::GetWorld() const
 {
+	//UObject получает доступ к миру через своего владельца (Outer)
+	if (const UObject* Outer = GetOuter())
+	{
+		return Outer->GetWorld();
+	}
+	return nullptr;
 }
 
-void UIrisEquipmentInstance::OnUnEquipped()
+void UIrisEquipmentInstance::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ThisClass,SourceItemDef);
 }
 
+void UIrisEquipmentInstance::OnEquipped(){}
+void UIrisEquipmentInstance::OnUnEquipped(){}
+
+// ----------------------------------------------------------------------
+// GAS (Выполняется СТРОГО на сервере)
+// ----------------------------------------------------------------------
 void UIrisEquipmentInstance::GrantEquipmentDef(UAbilitySystemComponent* ASC,
-	const UIrisInventoryItemDefinition* InItemDef)
+                                               const UIrisInventoryItemDefinition* InItemDef)
 {
-	if (!ASC || !InItemDef) return;
+	if (!ASC || !InItemDef || ASC->GetOwnerActor()->HasAuthority()) return;
 	
 	CachedASC = ASC;
-	SourceItemDef = InItemDef;
+	SourceItemDef = InItemDef; //Клиенты получат реплицируемое значение
 	
 	//Достаем фрагмент с правилами GAS из CDO
 	const UIrisInventoryItemFragment_Equippable* EquipDef = InItemDef->FindFragmentByClass<UIrisInventoryItemFragment_Equippable>();
@@ -67,14 +81,11 @@ void UIrisEquipmentInstance::GrantEquipmentDef(UAbilitySystemComponent* ASC,
 			GrantedEffectHandles.Add(Handle);
 		}
 	}
-	
-	
-	
 }
 
 void UIrisEquipmentInstance::RevokeEquipmentDef()
 {
-	if (!CachedASC) return;
+	if (!CachedASC || !CachedASC->GetOwnerActor()->HasAuthority()) return;
 	
 	for (const FGameplayAbilitySpecHandle& Handle : GrantedAbilityHandles)
 	{
@@ -91,10 +102,50 @@ void UIrisEquipmentInstance::RevokeEquipmentDef()
 	CachedASC = nullptr;
 }
 
+// ----------------------------------------------------------------------
+// ВИЗУАЛ (Выполняется ЛОКАЛЬНО на всех машинах через хуки Iris)
+// ----------------------------------------------------------------------
 void UIrisEquipmentInstance::SpawnEquipmentDef()
 {
+	if (SpawnedActor) return; //Защита
+	if (!SourceItemDef) return; //Ждем репликации от сервера
+	
+	const UIrisInventoryItemFragment_Equippable* EquipDef = SourceItemDef->FindFragmentByClass<UIrisInventoryItemFragment_Equippable>();
+	if (!EquipDef || EquipDef->EquipmentPrefab.IsNull()) return;
+	
+	UWorld* World = GetWorld();
+	AActor* OwningActor = Cast<AActor>(GetOuter());
+	if (!World || !OwningActor) return;
+	
+	if (UClass* ActorClass = EquipDef->EquipmentPrefab.LoadSynchronous())
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = OwningActor;
+		SpawnParams.Instigator = Cast<APawn>(OwningActor);
+		//Меш оружия не должен блокировать спавн
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		
+		SpawnedActor = World->SpawnActor<AActor>(ActorClass,SpawnParams);
+		
+		//Аттачим к сокету
+		if (SpawnedActor)
+		{
+			if (ACharacter* Char = Cast<ACharacter>(OwningActor))
+			{
+				//TODO Продумать систему в которой будет фрагмент с сокетом для аттача и логики если он отсутствует
+				SpawnedActor->AttachToComponent(Char->GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,"WeaponSocket"); //TODO Затычка переделать после
+			}
+			OnEquipped(); // Сигнал для Blueprint (Проиграть звук и т.д)
+		}
+	}
 }
 
 void UIrisEquipmentInstance::DestroyEquipmentDef()
 {
+	if (SpawnedActor)
+	{
+		OnUnEquipped(); //Сигнал для Blueprint
+		SpawnedActor->Destroy();
+		SpawnedActor = nullptr;
+	}
 }

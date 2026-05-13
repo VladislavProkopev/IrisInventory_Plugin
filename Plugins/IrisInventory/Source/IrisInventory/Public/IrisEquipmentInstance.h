@@ -6,16 +6,16 @@
 #include "UObject/NoExportTypes.h"
 #include "GameplayAbilitySpecHandle.h"
 #include "ActiveGameplayEffectHandle.h"
-#include "Components/GameFrameworkInitStateInterface.h"
 #include "CoreFeatures/Public/Inventory/Items/IrisInventoryItemFragment_Equippable.h"
 #include "IrisEquipmentInstance.generated.h"
 
 class UIrisInventoryItemDefinition;
 class UAbilitySystemComponent;
+class AActor;
 
 /**
  * Транзитный обьект. Существует только пока предмет в руках (экипирован)
- * Управляет жизненым циклом GAS для конкретного оружия/предмета
+ * Реплицируется по сети. Управляет GAS (На сервере) и мешами (Локально)
  */
 UCLASS(BlueprintType,Blueprintable)
 class IRISINVENTORY_API UIrisEquipmentInstance : public UObject
@@ -25,26 +25,33 @@ public:
 	virtual void OnEquipped();
 	virtual void OnUnEquipped();
 	
-	//TODO посмотреть что нужно сделать с ним
-	//Вызывается из EquipmentManager на основе данных из ItemFragment_Equippable
-	void GrantEquipmentDef(UAbilitySystemComponent* ASC, const UIrisInventoryItemDefinition* InItemDef);
+	// --- Инициализация сети ---
+	virtual bool IsSupportedForNetworking() const override {return true;}
+	virtual UWorld* GetWorld() const override;
 	
+	// --- GAS: Серверная логика ---
+	void GrantEquipmentDef(UAbilitySystemComponent* ASC, const UIrisInventoryItemDefinition* InItemDef);
 	void RevokeEquipmentDef();
 	
-	//Ссылка на заспавненный меш
-	UPROPERTY()
-	TObjectPtr<AActor> SpawnedActor;
-
+	// --- Визуал: Локальная логика ---
+	void SpawnEquipmentDef();
+	void DestroyEquipmentDef();
+	
 	//Геттер для сравнения в менеджере
 	const UIrisInventoryItemDefinition* GetItemDef() const {return SourceItemDef;}
 	
-	void SpawnEquipmentDef();
-	void DestroyEquipmentDef();
+	//Ссылка на заспавненный меш (Не реплицируется)
+	UPROPERTY()
+	TObjectPtr<AActor> SpawnedActor;
+protected:
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
 private:
 	UPROPERTY()
 	TObjectPtr<UAbilitySystemComponent> CachedASC;
 	
-	UPROPERTY()
+	// КРИТИЧНО: Реплицируем, чтобы клиент знал, чей префаб спавнить
+	UPROPERTY(Replicated)
 	TObjectPtr<const UIrisInventoryItemDefinition> SourceItemDef;
 	
 	//Храним хендлы, чтобы знать, что именно нужно забрать при смене оружия
