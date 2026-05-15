@@ -56,7 +56,7 @@ void UIrisEquipmentInstance::GrantEquipmentDef(UAbilitySystemComponent* ASC,
 		{
 			FGameplayAbilitySpec Spec(AbilityClass,1,INDEX_NONE,this);
 			//Биндим инпут по тегу (Пример Item.Type.Weapon)
-			Spec.DynamicAbilityTags.AddTag(AbilitySet.InputTag);
+			Spec.GetDynamicSpecSourceTags().AddTag(AbilitySet.InputTag);
 			
 			//Получаем и сохраняем Handle, чтобы позже сделать ClearAbility при Unequip
 			FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
