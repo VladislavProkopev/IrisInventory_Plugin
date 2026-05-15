@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "IrisInventoryComponent.h"
 #include "IrisInventoryTypes.h"
+#include "Engine/ActorChannel.h"
 
 
 DEFINE_LOG_CATEGORY_STATIC(Log_IrisEquipmentManagerComponent, All, All);
@@ -33,6 +34,23 @@ void UIrisEquipmentManagerComponent::GetLifetimeReplicatedProps(TArray<class FLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ThisClass,EquipmentList);
+}
+
+bool UIrisEquipmentManagerComponent::ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch,
+	FReplicationFlags* RepFlags)
+{
+	bool bRepSubobject = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+	
+	//Итерируемся по L2 стейту и решистрируем каждый активный UObject в канал связи
+	for (const FIrisEquipmentEntry& Entry : EquipmentList.Entries)
+	{
+		if (Entry.Instance && IsValid(Entry.Instance))
+		{
+			bRepSubobject |= Channel->ReplicateSubobject(Entry.Instance,*Bunch,*RepFlags);
+		}
+	}
+	
+	return bRepSubobject;
 }
 
 // ----------------------------------------------------------------------

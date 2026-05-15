@@ -45,6 +45,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	// Обязательный хук для репликации UObject-инстансов внутри компонента
+	virtual bool ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags) override;
 private:
 	//L2 База данных
 	UPROPERTY(Replicated)
