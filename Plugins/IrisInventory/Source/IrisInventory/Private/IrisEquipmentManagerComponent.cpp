@@ -57,7 +57,7 @@ bool UIrisEquipmentManagerComponent::ReplicateSubobjects(class UActorChannel* Ch
 // МУТАТОРЫ ЭКИПИРОВКИ (Сервер)
 // ----------------------------------------------------------------------
 
-UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItem(const UIrisInventoryItemDefinition* ItemDef)
+UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItemByInstance(const UIrisInventoryItemDefinition* ItemDef)
 {
 	if(!ItemDef || !CachedASC || !GetOwner()->HasAuthority()) return nullptr;
 	
@@ -73,6 +73,30 @@ UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItem(const UIrisInv
 	{
 		NewInstance->GrantEquipmentDef(CachedASC,ItemDef);
 		NewInstance->SpawnEquipmentDef();
+	}
+	
+	return NewInstance;
+}
+
+UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItemByID(int32 InventoryInstanceID)
+{
+	UIrisInventoryComponent* Inventory = GetOwner()->FindComponentByClass<UIrisInventoryComponent>();
+	if (!Inventory) return nullptr;
+	
+	int32 SlotIndex = Inventory->FindSlotByInstanceID(InventoryInstanceID);
+	if (SlotIndex == INDEX_NONE) return nullptr;
+	
+	const UIrisInventoryItemDefinition* ItemDef = Inventory->GetItemDefAtSlot(SlotIndex);
+	
+	UIrisEquipmentInstance* NewInstance = EquipmentList.AddEntry(UIrisEquipmentInstance::StaticClass());
+	if (NewInstance)
+	{
+		NewInstance->SetEquipmentData(ItemDef,InventoryInstanceID);
+		if (CachedASC)
+		{
+			NewInstance->GrantEquipmentDef(CachedASC,ItemDef);
+		}
+		NewInstance->OnEquipped();
 	}
 	
 	return NewInstance;

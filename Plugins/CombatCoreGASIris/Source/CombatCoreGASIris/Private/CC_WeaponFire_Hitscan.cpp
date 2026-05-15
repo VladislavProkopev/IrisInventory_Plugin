@@ -76,7 +76,7 @@ void UCC_WeaponFire_Hitscan::OnAvatarSet(const FGameplayAbilityActorInfo* ActorI
 	{
 		//Кешируем актор оружия (Если он заспавнен)
 		CachedWeaponActor = Cast<ACC_WeaponBase>(EquipInstance->SpawnedActor);
-		
+		CachedInstanceID = EquipInstance->GetInstanceID();
 		//Кешируем тяжелый поиск фрагмента (Выполняется 1 раз за всю жизнь оружия)
 		if (const UIrisInventoryItemDefinition* ItemDef = EquipInstance->GetItemDef())
 		{
@@ -95,12 +95,13 @@ bool UCC_WeaponFire_Hitscan::CheckCost(const FGameplayAbilitySpecHandle Handle,
 {
 	//Оставляем базовую логику GAS (вдруг есть какие-то глобальные дебафы на стрельбу)
 	const bool bBaseCostMet = Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags);
-	return bBaseCostMet;
+	
 	if (!bBaseCostMet) return false;
 	
-	if (!CachedInventoryComponent) return false;
+	if (!CachedInventoryComponent || CachedInstanceID == INDEX_NONE) return false;
 	
-	int32 CurrentWeaponSlotIndex = GetEquippedWeaponSlotIndex();
+	int32 CurrentWeaponSlotIndex = CachedInventoryComponent->FindSlotByInstanceID(CachedInstanceID);
+	if (CurrentWeaponSlotIndex == INDEX_NONE) return false;
 	
 	const int32 CurrentAmmo = CachedInventoryComponent->GetItemStat(CurrentWeaponSlotIndex,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current);
 	
@@ -112,10 +113,10 @@ void UCC_WeaponFire_Hitscan::ApplyCost(const FGameplayAbilitySpecHandle Handle,
 {
 	Super::ApplyCost(Handle, ActorInfo, ActivationInfo);
 	
-	if (!CachedInventoryComponent) return;
+	if (!CachedInventoryComponent || CachedInstanceID == INDEX_NONE) return;
 	
-	int32 CurrentWeaponSlotIndex = GetEquippedWeaponSlotIndex();
+	const int32 CurrentWeaponSlotIndex = CachedInventoryComponent->FindSlotByInstanceID(CachedInstanceID);
+	if (!CurrentWeaponSlotIndex) return;
 	
 	CachedInventoryComponent->ModifyItemStat(CurrentWeaponSlotIndex,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current,-1);
-	
 }

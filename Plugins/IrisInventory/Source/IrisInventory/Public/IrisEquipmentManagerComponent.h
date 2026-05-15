@@ -26,7 +26,10 @@ public:
 	UIrisEquipmentManagerComponent(const FObjectInitializer& OI);
 
 	UFUNCTION(BlueprintCallable,Category="Equipment",BlueprintAuthorityOnly)
-	UIrisEquipmentInstance* EquipItem(const UIrisInventoryItemDefinition* ItemDef);
+	UIrisEquipmentInstance* EquipItemByInstance(const UIrisInventoryItemDefinition* ItemDef);
+	
+	UFUNCTION(BlueprintCallable,Category="Equipment",BlueprintAuthorityOnly)
+	UIrisEquipmentInstance* EquipItemByID(int32 InventoryInstanceID);
 	
 	UFUNCTION(BlueprintCallable,Category="Equipment",BlueprintAuthorityOnly)
 	void UnequipItem(UIrisEquipmentInstance* ItemInstance);

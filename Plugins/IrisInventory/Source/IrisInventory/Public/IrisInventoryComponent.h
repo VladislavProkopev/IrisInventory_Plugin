@@ -10,6 +10,8 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FIrisInventoryItemRemovedSignature, const UIrisInventoryItemDefinition*, RemovedItemDef);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FIrisInventoryItemAddedSignature, const UIrisInventoryItemDefinition*, AddedItemDef,int32,NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FIrisInventoryItemUpdatedSignature, const UIrisInventoryItemDefinition*, UpdatedItemDef,int32,NewCount);
+
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class IRISINVENTORY_API UIrisInventoryComponent : public UPawnComponent, public IGameFrameworkInitStateInterface,public IIrisInventoryInterface
 {
@@ -22,6 +24,7 @@ public:
 	virtual int32 GetItemStat(int32 SlotIndex, FGameplayTag StatTag) const override;
 	virtual void ModifyItemStat(int32 SlotIndex, FGameplayTag StatTag, int32 Delta) override;
 	virtual const UIrisInventoryItemDefinition* GetItemDefAtSlot(int32 SlotIndex) const override;
+	virtual int32 FindSlotByInstanceID(int32 InstanceID) const override;
 	//~ End IIrisInventoryInterface
 	
 	static const FName NAME_ActorFeatureName;
@@ -50,6 +53,11 @@ public:
 	//Метод связи с L2 (Вызывается из FIrisInventoryList)
 	void BroadcastInventoryUpdate(const UIrisInventoryItemDefinition* ItemDef,int32 NewCount,EIrisInventoryChangeType ChangeType);
 	
+	int32 GenerateInstanceID()
+	{
+		check(HasAuthority());
+		return NextInstanceIU++;
+	}
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
@@ -62,4 +70,6 @@ private:
 	
 	int32 GetMaxStackSize(const UIrisInventoryItemDefinition* ItemDef) const;
 	
+	//Серверный счетчик. Не имеет UPROPERTY(), не репличируется
+	int32 NextInstanceIU = 1;
 };

@@ -26,8 +26,6 @@ void UIrisInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeP
 void UIrisInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
-		
-	Inventory.OnListChanged.AddUObject(this,&UIrisInventoryComponent::BroadcastInventoryUpdate);
 	
 	BindOnActorInitStateChanged(NAME_None,FGameplayTag(),false);
 	ensure(TryToChangeInitState(CoreGameplayTags::InitStateTags::InitState_Spawned));
@@ -37,6 +35,8 @@ void UIrisInventoryComponent::BeginPlay()
 void UIrisInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	UnregisterInitStateFeature();
+	Inventory.OwnerComponent = nullptr;
+	Inventory.OnListChanged.RemoveAll(this);
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -69,6 +69,24 @@ const UIrisInventoryItemDefinition* UIrisInventoryComponent::GetItemDefAtSlot(in
 		return Inventory.Entries[SlotIndex].ItemDef.Get();
 	}
 	return nullptr;
+}
+
+int32 UIrisInventoryComponent::FindSlotByInstanceID(int32 InstanceID) const
+{
+	if (InstanceID == INDEX_NONE)
+	{
+		return INDEX_NONE;
+	}
+	
+	for (int32 i=0;i<Inventory.Entries.Num();i++)
+	{
+		if (Inventory.Entries[i].InstanceID == InstanceID)
+		{
+			return i;
+		}
+	}
+	
+	return INDEX_NONE;
 }
 
 int32 UIrisInventoryComponent::GetMaxStackSize(const UIrisInventoryItemDefinition* ItemDef) const
@@ -190,6 +208,8 @@ void UIrisInventoryComponent::CheckDefaultInitialization()
 void UIrisInventoryComponent::OnRegister()
 {
 	Super::OnRegister();
+	Inventory.OwnerComponent = this;
+	Inventory.OnListChanged.AddUObject(this,&UIrisInventoryComponent::BroadcastInventoryUpdate);
 	RegisterInitStateFeature();
 }
 

@@ -39,6 +39,9 @@ public:
 	
 	//Геттер для сравнения в менеджере
 	const UIrisInventoryItemDefinition* GetItemDef() const {return SourceItemDef;}
+	int32 GetInstanceID() const {return SourceInstanceID;}
+	
+	void SetEquipmentData(const UIrisInventoryItemDefinition* InItemDef,int32 InInstanceID);
 	
 	//Ссылка на заспавненный меш (Не реплицируется)
 	UPROPERTY()
@@ -53,6 +56,9 @@ private:
 	// КРИТИЧНО: Реплицируем, чтобы клиент знал, чей префаб спавнить
 	UPROPERTY(Replicated)
 	TObjectPtr<const UIrisInventoryItemDefinition> SourceItemDef;
+	
+	UPROPERTY(Replicated)
+	int32 SourceInstanceID = INDEX_NONE;
 	
 	//Храним хендлы, чтобы знать, что именно нужно забрать при смене оружия
 	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;

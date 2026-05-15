@@ -30,5 +30,6 @@ protected:
 	
 	const UIrisInventoryFragment_WeaponBallistics* CachedBallistics = nullptr;
 	TWeakObjectPtr<ACC_WeaponBase> CachedWeaponActor = nullptr;
-	const UIrisInventoryComponent* CachedInventoryComponent = nullptr;
+	UIrisInventoryComponent* CachedInventoryComponent = nullptr;
+	int32 CachedInstanceID = -1;
 };

@@ -20,6 +20,12 @@ UWorld* UIrisEquipmentInstance::GetWorld() const
 	return nullptr;
 }
 
+void UIrisEquipmentInstance::SetEquipmentData(const UIrisInventoryItemDefinition* InItemDef, int32 InInstanceID)
+{
+	SourceItemDef = InItemDef;
+	SourceInstanceID = InInstanceID;
+}
+
 void UIrisEquipmentInstance::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

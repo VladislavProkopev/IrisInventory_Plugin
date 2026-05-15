@@ -23,6 +23,7 @@ namespace CoreGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_MaxStackSize, "Item.Stat.MaxStackSize");
 		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Weight, "Item.Stat.Weight");
 		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_BaseValue, "Item.Stat.BaseValue");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Ammo_Current, "Item.Stat.Ammo_Current");
 		
 		UE_DEFINE_GAMEPLAY_TAG(Item_State_StackCount, "Item.State.StackCount");
 		UE_DEFINE_GAMEPLAY_TAG(Item_State_Durability, "Item.State.Durability");
