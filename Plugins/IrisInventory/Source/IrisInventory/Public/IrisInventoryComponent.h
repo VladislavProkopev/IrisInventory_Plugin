@@ -7,10 +7,11 @@
 #include "Components/GameFrameworkInitStateInterface.h"
 #include "IrisInventoryComponent.generated.h"
 
+/* Переход на GMR
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FIrisInventoryItemRemovedSignature, const UIrisInventoryItemDefinition*, RemovedItemDef);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FIrisInventoryItemAddedSignature, const UIrisInventoryItemDefinition*, AddedItemDef,int32,NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FIrisInventoryItemUpdatedSignature, const UIrisInventoryItemDefinition*, UpdatedItemDef,int32,NewCount);
-
+*/
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class IRISINVENTORY_API UIrisInventoryComponent : public UPawnComponent, public IGameFrameworkInitStateInterface,public IIrisInventoryInterface
@@ -25,6 +26,9 @@ public:
 	virtual void ModifyItemStat(int32 SlotIndex, FGameplayTag StatTag, int32 Delta) override;
 	virtual const UIrisInventoryItemDefinition* GetItemDefAtSlot(int32 SlotIndex) const override;
 	virtual int32 FindSlotByInstanceID(int32 InstanceID) const override;
+	virtual bool RemoveItemByInstanceID(int32 InstanceID,int32 CountToRemove) override;
+	virtual int32 GetTotalItemCountByTag(FGameplayTag ItemTag) const override;
+	virtual int32 ConsumeItemByTag(FGameplayTag ItemTag, int32 CountToConsume) override;
 	//~ End IIrisInventoryInterface
 	
 	static const FName NAME_ActorFeatureName;
@@ -40,6 +44,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "IrisInventory|Operations",BlueprintAuthorityOnly)
 	void AddEntry(const UIrisInventoryItemDefinition* ItemDef,int32 CountToAdd);
 	
+	/* Переход на GMR
 	//Делегаты для обратной совместимости в EquipmentManager
 	UPROPERTY(BlueprintAssignable,Category="IrisInventory|Events")
 	FIrisInventoryItemRemovedSignature OnItemRemoved;
@@ -49,15 +54,21 @@ public:
 	
 	UPROPERTY(BlueprintAssignable,Category="IrisInventory|Events")
 	FIrisInventoryItemUpdatedSignature OnItemUpdated;
-	
+	*/
 	//Метод связи с L2 (Вызывается из FIrisInventoryList)
-	void BroadcastInventoryUpdate(const UIrisInventoryItemDefinition* ItemDef,int32 NewCount,EIrisInventoryChangeType ChangeType);
+	void BroadcastInventoryUpdate(const UIrisInventoryItemDefinition* ItemDef,int32 NewCount,EIrisInventoryChangeType ChangeType,int32 InstanceID);
 	
 	int32 GenerateInstanceID()
 	{
 		check(HasAuthority());
 		return NextInstanceIU++;
 	}
+	
+	UFUNCTION(Blueprintable,Category="IrisInventory|Operations",BlueprintInternalUseOnly)
+	bool MergeStacks(int32 SourceInstanceID, int32 TargetInstanceID);
+	
+	UFUNCTION(Blueprintable,Category="IrisInventory|Operations",BlueprintInternalUseOnly)
+	int32 SplitStack(int32 SourceInstanceID, int32 AmountToSplit);
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;

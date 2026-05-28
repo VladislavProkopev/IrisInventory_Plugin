@@ -2,6 +2,7 @@
 #include "CoreFeatures/Public/CoreGameplayTags.h"
 #include "Components/GameFrameworkComponentDelegates.h"
 #include "Components/GameFrameworkComponentManager.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "Inventory/Items/IrisInventoryFragment_Stats.h"
 #include "Net/UnrealNetwork.h"
 
@@ -89,6 +90,77 @@ int32 UIrisInventoryComponent::FindSlotByInstanceID(int32 InstanceID) const
 	return INDEX_NONE;
 }
 
+bool UIrisInventoryComponent::RemoveItemByInstanceID(int32 InstanceID, int32 CountToRemove)
+{
+	if (!HasAuthority()) return false;
+	
+	int32 SlotIndex = FindSlotByInstanceID(InstanceID);
+	if (SlotIndex != INDEX_NONE)
+	{
+		Inventory.RemoveEntryByID(InstanceID,CountToRemove);
+		return true;
+	}
+	return false;
+}
+
+int32 UIrisInventoryComponent::GetTotalItemCountByTag(FGameplayTag ItemTag) const
+{
+	int32 TotalCount = 0;
+	
+	//0(n) проход по кешу. Lock-Free, так как мы только читаем
+	for (const FIrisInventoryEntry& Entry : Inventory.Entries)
+	{
+		if (Entry.IsValid())
+		{
+			//Проверяем фрагмент статов на наличие тега(например, Item_Type_Consumable)
+			if (const UIrisInventoryFragment_Stats* StatsFrag = Entry.ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
+			{
+				if (StatsFrag->InitialItemStats.Contains(ItemTag))
+				{
+					TotalCount+=Entry.StackCount;
+				}
+			}
+		}
+	}
+	return TotalCount;
+}
+
+int32 UIrisInventoryComponent::ConsumeItemByTag(FGameplayTag ItemTag, int32 CountToConsume)
+{
+	if (!HasAuthority() || CountToConsume<=0) return 0;
+	
+	int32 RemainingToConsume = 0;
+	int32 ActuallyConsumed = 0;
+	
+	//Идем с конца, так как RemoveAtSwap меняет индексы, если мы будем удалять предметы
+	//Обратный цикл - стандартный паттерн безопасной итерации с удалением
+	for (int32 i = Inventory.Entries.Num() - 1; i>=0;--i)
+	{
+		FIrisInventoryEntry& Entry = Inventory.Entries[i];
+		
+		if (Entry.IsValid())
+		{
+			if (const UIrisInventoryFragment_Stats* StatsFrag = Entry.ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
+			{
+				if (StatsFrag->InitialItemStats.Contains(ItemTag))
+				{
+					int32 ConsumeFromStack = FMath::Min(RemainingToConsume,Entry.StackCount);
+					Inventory.RemoveEntryByID(Entry.InstanceID,ConsumeFromStack);
+					
+					RemainingToConsume -= ConsumeFromStack;
+					ActuallyConsumed += ConsumeFromStack;
+					
+					if (RemainingToConsume <= 0)
+					{
+						break;
+					}
+				}
+			}
+		}
+	}
+	return ActuallyConsumed;
+}
+
 int32 UIrisInventoryComponent::GetMaxStackSize(const UIrisInventoryItemDefinition* ItemDef) const
 {
 	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
@@ -130,24 +202,33 @@ void UIrisInventoryComponent::AddEntry(const UIrisInventoryItemDefinition* ItemD
 // ----------------------------------------------------------------------
 // ОПОВЕЩЕНИЯ ДЛЯ L3/L4 (GMR & Делегаты)
 // ----------------------------------------------------------------------
-void UIrisInventoryComponent::BroadcastInventoryUpdate(const UIrisInventoryItemDefinition* ItemDef, int32 NewCount,EIrisInventoryChangeType ChangeType)
+void UIrisInventoryComponent::BroadcastInventoryUpdate(const UIrisInventoryItemDefinition* ItemDef, int32 NewCount,EIrisInventoryChangeType ChangeType,int32 InstanceID)
 {
 	if (!ItemDef) return;
 
-	switch (ChangeType)
-	{
-	case EIrisInventoryChangeType::Added :
-		OnItemAdded.Broadcast(ItemDef,NewCount);
-		break;
-	case EIrisInventoryChangeType::Removed :
-		OnItemRemoved.Broadcast(ItemDef);
-		break;
-	case EIrisInventoryChangeType::Updated :
-		OnItemUpdated.Broadcast(ItemDef,NewCount);
-		break;
-	}
+	//Формируем DTO
+	FSFInventoryChangeMessage Message;
+	Message.ItemDef = ItemDef;
+	Message.ChangeType = ChangeType;
+	Message.InstanceID = InstanceID;
+	Message.NewCount = NewCount;
 	
-	//TODO в будущем здесь будет бродкаст в GameplayMessageRouter для обновления UI
+	//0(1) бродкаст в пустоту
+	//Используем тег CoreGameplayTags::GMR::Inventory_Message_Updated
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(this);
+	MessageSubsystem.BroadcastMessage(CoreGameplayTags::GMR::Inventory_Message_Updated,Message);
+}
+
+bool UIrisInventoryComponent::MergeStacks(int32 SourceInstanceID, int32 TargetInstanceID)
+{
+	if (!HasAuthority()) return false;
+	return Inventory.MergeEntries(SourceInstanceID,TargetInstanceID);
+}
+
+int32 UIrisInventoryComponent::SplitStack(int32 SourceInstanceID, int32 AmountToSplit)
+{
+	if (!HasAuthority()) return INDEX_NONE;
+	return Inventory.SplitEntry(SourceInstanceID,AmountToSplit);
 }
 
 // ----------------------------------------------------------------------
@@ -209,7 +290,7 @@ void UIrisInventoryComponent::OnRegister()
 {
 	Super::OnRegister();
 	Inventory.OwnerComponent = this;
-	Inventory.OnListChanged.AddUObject(this,&UIrisInventoryComponent::BroadcastInventoryUpdate);
+	//Inventory.OnListChanged.AddUObject(this,&UIrisInventoryComponent::BroadcastInventoryUpdate);
 	RegisterInitStateFeature();
 }
 
