@@ -74,7 +74,7 @@ void FIrisEquipmentList::RemoveEntry(UIrisEquipmentInstance* Instance)
 // ---------------------------------------------------------
 // КЛИЕНТ: ХУКИ СЕТИ
 // ---------------------------------------------------------
-void FIrisEquipmentList::PreReplicationRemove(const TArrayView<int32> RemovedIndices, int32 FinalSize)
+void FIrisEquipmentList::PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize)
 {
 	for (int32 Index : RemovedIndices)
 	{
@@ -89,7 +89,7 @@ void FIrisEquipmentList::PreReplicationRemove(const TArrayView<int32> RemovedInd
 	}
 }
 
-void FIrisEquipmentList::PostReplicatedAdd(const TArrayView<int32> AddedIndices, int32 FinalSize)
+void FIrisEquipmentList::PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize)
 {
 	for (int32 Index : AddedIndices)
 	{
@@ -97,7 +97,7 @@ void FIrisEquipmentList::PostReplicatedAdd(const TArrayView<int32> AddedIndices,
 	}
 }
 
-void FIrisEquipmentList::PostReplicatedChange(const TArrayView<int32> ChangedIndices, int32 FinalSize)
+void FIrisEquipmentList::PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize)
 {
 	for (int32 Index : ChangedIndices)
 	{

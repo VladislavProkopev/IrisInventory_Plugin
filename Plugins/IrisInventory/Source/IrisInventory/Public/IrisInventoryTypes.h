@@ -36,7 +36,25 @@ struct FSFInventoryChangeMessage
 	TEnumAsByte<EIrisInventoryChangeType> ChangeType = EIrisInventoryChangeType::Updated;
 };
 
-
+USTRUCT(BlueprintType)
+struct FIrisInventoryAddResult
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly,Category="IrisInventory|Result")
+	int32 RequestedCount = 0;
+	
+	//Сколько реально было добавлено в инвентарь
+	UPROPERTY(BlueprintReadOnly,Category="IrisInventory|Result")
+	int32 ActuallyAdded = 0;
+	
+	//Сколько не влезло (из-за лимита веса или кастомной логики)
+	UPROPERTY(BlueprintReadOnly,Category="IrisInventory|Result")
+	int32 RejectedCount = 0;
+	
+	bool IsFullySuccessful() const {return RequestedCount > 0 && RequestedCount == ActuallyAdded;}
+	bool IsPartiallySuccessful() const {return ActuallyAdded > 0 && RejectedCount > 0;}
+};
 
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FIrisInventoryListChangedSignature, const UIrisInventoryItemDefinition*, int32,EIrisInventoryChangeType);
 

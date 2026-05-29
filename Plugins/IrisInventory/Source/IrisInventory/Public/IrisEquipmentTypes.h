@@ -48,9 +48,9 @@ struct FIrisEquipmentList : public FFastArraySerializer
 	void RemoveEntry(UIrisEquipmentInstance* Instance);
 	
 	// --- КЛИЕНТСКИЕ МУТАТОРЫ ---
-	void PreReplicationRemove(const TArrayView<int32> RemovedIndices, int32 FinalSize);
-	void PostReplicatedAdd(const TArrayView<int32> AddedIndices, int32 FinalSize);
-	void PostReplicatedChange(const TArrayView<int32> ChangedIndices, int32 FinalSize);
+	void PreReplicatedRemove(const TArrayView<int32>& RemovedIndices, int32 FinalSize);
+	void PostReplicatedAdd(const TArrayView<int32>& AddedIndices, int32 FinalSize);
+	void PostReplicatedChange(const TArrayView<int32>& ChangedIndices, int32 FinalSize);
 	
 private:
 	//Внутренний метод для безопасного спавна визуала

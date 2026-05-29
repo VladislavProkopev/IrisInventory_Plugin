@@ -62,6 +62,39 @@ void UIrisInventoryComponent::DropItem(int32 InstanceID, int32 CountToDrop)
 	}
 }
 
+bool UIrisInventoryComponent::CanRemoveItem_Implementation(int32 InstanceID, int32 CountToRemove) const
+{
+	//По умолчанию разрешаем удалять все
+	//Дизайнер в BP может добавить проверку тега "Item.Tag.Quest" и вернуть false
+	return true;
+}
+
+bool UIrisInventoryComponent::CanMergeItems_Implementation(int32 SourceInstanceID, int32 TargetInstanceID) const
+{
+	//C++ ядро проверит совпадение ItemDef
+	//Здесь мы по умолчанию просто разрешаем операцию
+	return true;
+}
+
+bool UIrisInventoryComponent::CanSplitItem_Implementation(int32 InstanceID) const
+{
+	//По умолчанию разрешаем делить все
+	return true;
+}
+
+int32 UIrisInventoryComponent::GetItemWeight(const UIrisInventoryItemDefinition* ItemDef) const
+{
+	if (!ItemDef) return 0;
+	
+	//0(1) lock-free чтение из CDO
+	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
+	{
+		return StatsFrag->GetItemStatByTag(CoreGameplayTags::InventoryTags::Item_Stat_Weight);
+	}
+	
+	return 0; //Если статов нет, предмет ничего не весит
+}
+
 void UIrisInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -131,6 +164,9 @@ int32 UIrisInventoryComponent::FindSlotByInstanceID(int32 InstanceID) const
 bool UIrisInventoryComponent::RemoveItemByInstanceID(int32 InstanceID, int32 CountToRemove)
 {
 	if (!HasAuthority()) return false;
+	
+	//Проверяем политику
+	if (!CanRemoveItem(InstanceID, CountToRemove)) return false;
 	
 	int32 SlotIndex = FindSlotByInstanceID(InstanceID);
 	if (SlotIndex != INDEX_NONE)
@@ -211,12 +247,36 @@ int32 UIrisInventoryComponent::GetMaxStackSize(const UIrisInventoryItemDefinitio
 // ----------------------------------------------------------------------
 // ДОБАВЛЕНИЕ ЛУТА
 // ----------------------------------------------------------------------
-void UIrisInventoryComponent::AddEntry(const UIrisInventoryItemDefinition* ItemDef, int32 CountToAdd)
+FIrisInventoryAddResult UIrisInventoryComponent::AddEntry(const UIrisInventoryItemDefinition* ItemDef, int32 CountToAdd)
 {
+	FIrisInventoryAddResult Result;
+	Result.RequestedCount = CountToAdd;
+	
+	if (!HasAuthority() || !ItemDef || CountToAdd <=0) return Result;
+	
+	//Спрашиваем политику: Сколько можно положить
+	int32 AllowedCount = CalculateAllowedAddAmount(ItemDef,CountToAdd);
+	
+	Result.ActuallyAdded = AllowedCount;
+	Result.RejectedCount = CountToAdd - AllowedCount;
+	
+	//Если что-то не влезло - передаем в сетевой стейт L2
+	if (AllowedCount > 0)
+	{
+		Inventory.CreateNewEntry(ItemDef,AllowedCount);
+	}
+	
+	//Компонент больше не занимается спавном Drop-акторов
+	//Он просто возвращает чек
+	
+	return Result;
+	
+	
+	/*
 	if (!ItemDef || CountToAdd <= 0 || HasAuthority()) return;
 	
 	/*TODO Добавить проверку веса и допустимого лимита перед добавлением и продумать универсальную логику,
-	которую будет реализовывать пользователь*/ 
+	которую будет реализовывать пользователь#1# 
 	
 	const int32 MaxStackSize = GetMaxStackSize(ItemDef);
 	
@@ -237,7 +297,7 @@ void UIrisInventoryComponent::AddEntry(const UIrisInventoryItemDefinition* ItemD
 		const int32 AmmountToFill = FMath::Min(CountToAdd,MaxStackSize);
 		Inventory.CreateNewEntry(ItemDef,AmmountToFill);
 		CountToAdd -= AmmountToFill;
-	}
+	}*/
 }
 
 // ----------------------------------------------------------------------
@@ -263,12 +323,20 @@ void UIrisInventoryComponent::BroadcastInventoryUpdate(const UIrisInventoryItemD
 bool UIrisInventoryComponent::MergeStacks(int32 SourceInstanceID, int32 TargetInstanceID)
 {
 	if (!HasAuthority()) return false;
+	
+	//Проверяем политику
+	if(!CanMergeItems(SourceInstanceID,TargetInstanceID)) return false;
+	
 	return Inventory.MergeEntries(SourceInstanceID,TargetInstanceID);
 }
 
 int32 UIrisInventoryComponent::SplitStack(int32 SourceInstanceID, int32 AmountToSplit)
 {
 	if (!HasAuthority()) return INDEX_NONE;
+	
+	//Проверяем политику
+	if (!CanSplitItem(SourceInstanceID)) return INDEX_NONE;
+	
 	return Inventory.SplitEntry(SourceInstanceID,AmountToSplit);
 }
 
@@ -325,6 +393,25 @@ void UIrisInventoryComponent::CheckDefaultInitialization()
 		CoreGameplayTags::InitStateTags::InitState_GameplayReady};
 	
 	ContinueInitStateChain(StateChain);
+}
+
+int32 UIrisInventoryComponent::CalculateAllowedAddAmount_Implementation(const UIrisInventoryItemDefinition* ItemDef,
+	int32 RequestedCount) const
+{
+	if (!ItemDef || RequestedCount <=0) return 0;
+	//TODO Подумать где будем хранить переменные и добавить фрагмент веса
+	//Если отключен (MaxWeight <=0), разрешаем взять все
+	//Если разработчик переопределит этот метод в Блюпринте и просто воткнет
+	//входной RequestCount в Return Node - вес перестанет работать
+	if (MaxWeight<=0) return RequestedCount;
+	
+	float ItemWeight = GetItemWeight(ItemDef);
+	if (ItemWeight <= 0) return RequestedCount; //Предмет ничего не весит
+	
+	int32 FreeWeight = FMath::Max(0.f,MaxWeight-CurrentWeight);
+	int32 AllowedByWeight = FreeWeight/ItemWeight;
+	
+	return FMath::Min(RequestedCount,AllowedByWeight);
 }
 
 void UIrisInventoryComponent::OnRegister()

@@ -33,13 +33,30 @@ bool AItemPickup_Base::TakePickup(AActor* Receiver)
 	
 	if (UIrisInventoryComponent* Inventory = Receiver->FindComponentByClass<UIrisInventoryComponent>())
 	{
-		//Похоже тут тоже переделаем
+		//CDO уже должен быть в памяти (загружен через UpdateVisuals), поэтому LoadSynchronous тут безопасен 0(1) чтение из кеша
 		const UIrisInventoryItemDefinition* LoadedDef = ItemDef.LoadSynchronous();
 		
-		Inventory->AddEntry(LoadedDef,StackCount);
+		//Вызываем новый API, который возвращает структуру-отчет
+		FIrisInventoryAddResult Result = Inventory->AddEntry(LoadedDef, StackCount);
 		
-		Destroy();
-		return true;
+		if (Result.IsFullySuccessful())
+		{
+			//Влезло абсолютно все. Сосуд больше не нужен
+			Destroy();
+			return true;
+		}
+		else if (Result.IsPartiallySuccessful())
+		{
+			//Влезла только часть (из-за лимита веса/слотов)
+			//Обновляем количество в сосуде на земле и говорим Iris разослать изменения
+			StackCount = Result.RejectedCount;
+			MARK_PROPERTY_DIRTY_FROM_NAME(AItemPickup_Base,StackCount,this);
+			return true; //Транзакция все равно успешна, так как мы хоть что-то подобрали
+		}
+		
+		//Если дошли сюда, значит Result.ActuallyAdded == 0
+		//У игрока нет места даже для 1 единицы лута. Ничего не делаем, сосуд останется нетронутым
+		return false;
 	}
 	return false;
 }
@@ -70,7 +87,7 @@ void AItemPickup_Base::OnRep_PickupData()
 
 void AItemPickup_Base::UpdateVisuals()
 {
-	if (!ItemDef.IsNull()) return;
+	if (ItemDef.IsNull()) return;
 	
 	//Шаг 1: Асинхронно грузим CDO
 	UAssetManager::GetStreamableManager().RequestAsyncLoad(
@@ -88,8 +105,17 @@ void AItemPickup_Base::OnItemDefLoaded()
 	//Ищем фрагмент с 3D визуальной частью
 	if (const UIrisInventoryItemFragment_World* VisualFrag = LoadedDef->FindFragmentByClass<UIrisInventoryItemFragment_World>())
 	{
-		if (!VisualFrag->WorldMesh.IsValid())
+		if (VisualFrag->WorldMesh.IsValid())
 		{
+			//Меш уже загружен в RAM (другим пикапом) Применяем мгновенно
+			if (VisualMesh)
+			{
+				VisualMesh->SetStaticMesh(VisualFrag->WorldMesh.Get());
+			}
+		}
+		else if (!VisualFrag->WorldMesh.IsValid())
+		{
+			//Меша нет в RAM, но путь указан корректно
 			//Шаг 2: Асинхронно грузим саму тяжелую геометрию
 			MeshLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 				VisualFrag->WorldMesh.ToSoftObjectPath(),
