@@ -69,6 +69,12 @@ public:
 	
 	UFUNCTION(Blueprintable,Category="IrisInventory|Operations",BlueprintInternalUseOnly)
 	int32 SplitStack(int32 SourceInstanceID, int32 AmountToSplit);
+	
+	UPROPERTY(EditDefaultsOnly,Category="IrisInventory|Config")
+	TSubclassOf<class AItemPickup_Base> DefaultPickupClass;
+	
+	UFUNCTION(BlueprintCallable, Category="IrisInventory|Operations",BlueprintInternalUseOnly)
+	void DropItem(int32 InstanceID, int32 CountToDrop);
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;

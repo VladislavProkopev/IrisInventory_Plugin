@@ -1,4 +1,6 @@
 ﻿#include "IrisInventoryComponent.h"
+
+#include "ItemPickup_Base.h"
 #include "CoreFeatures/Public/CoreGameplayTags.h"
 #include "Components/GameFrameworkComponentDelegates.h"
 #include "Components/GameFrameworkComponentManager.h"
@@ -22,6 +24,42 @@ void UIrisInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeP
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ThisClass,Inventory);
+}
+
+void UIrisInventoryComponent::DropItem(int32 InstanceID, int32 CountToDrop)
+{
+	if (!HasAuthority() || CountToDrop <=0 || !DefaultPickupClass) return;
+	
+	//1. Ищем что выбрасываем
+	int32 SlotIndex = FindSlotByInstanceID(InstanceID);
+	if (SlotIndex == INDEX_NONE) return;
+	
+	const UIrisInventoryItemDefinition* ItemDefToDrop = Inventory.Entries[SlotIndex].ItemDef;
+	
+	//2. Уничтожаем данные в памяти (GC-Free)
+	//метод вернет true или false, если транзакция удалась. Для простоты опустим чек
+	Inventory.RemoveEntryByID(InstanceID,CountToDrop);
+	
+	//3. Материализация в мире
+	AActor* OwnerActor = GetOwner();
+	//TODO Посмотреть как будет в игре и нужно ли выносить в параметр
+	FVector DropLocation = OwnerActor->GetActorLocation() + OwnerActor->GetActorForwardVector() * 100.f;
+	FTransform SpawnTransform(OwnerActor->GetActorRotation(),DropLocation);
+	
+	AItemPickup_Base* SpawnedPickup = GetWorld()->SpawnActorDeferred<AItemPickup_Base>(
+		DefaultPickupClass,
+		SpawnTransform,
+		nullptr,
+		nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	
+	if (SpawnedPickup)
+	{
+		//Инжектим данные в сосуд до BeginPlay и репликации
+		SpawnedPickup->InitializePickup(ItemDefToDrop,CountToDrop);
+		
+		SpawnedPickup->FinishSpawning(SpawnTransform);
+	}
 }
 
 void UIrisInventoryComponent::BeginPlay()
@@ -176,6 +214,9 @@ int32 UIrisInventoryComponent::GetMaxStackSize(const UIrisInventoryItemDefinitio
 void UIrisInventoryComponent::AddEntry(const UIrisInventoryItemDefinition* ItemDef, int32 CountToAdd)
 {
 	if (!ItemDef || CountToAdd <= 0 || HasAuthority()) return;
+	
+	/*TODO Добавить проверку веса и допустимого лимита перед добавлением и продумать универсальную логику,
+	которую будет реализовывать пользователь*/ 
 	
 	const int32 MaxStackSize = GetMaxStackSize(ItemDef);
 	
