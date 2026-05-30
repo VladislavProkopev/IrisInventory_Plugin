@@ -43,6 +43,10 @@ public:
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Visuals")
 	TSoftClassPtr<AActor> EquipmentPrefab;
 	
+	//Имя сокета для аттача
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Visuals")
+	FName AttachSocket = FName("WeaponSocket");
+	
 	//Активные способности
 	//Выдаются (GiveAbility) при экипировке, забираются при снятии
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="GAS|Abilities")

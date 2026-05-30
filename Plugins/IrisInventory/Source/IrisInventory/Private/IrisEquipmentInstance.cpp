@@ -4,6 +4,7 @@
 #include "IrisEquipmentInstance.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayAbilitySpec.h"
+#include "Engine/AssetManager.h"
 #include "GameFramework/Character.h"
 #include "Net/UnrealNetwork.h"
 #include "Inventory/Items/IrisInventoryItemDefinition.h"
@@ -30,6 +31,49 @@ void UIrisEquipmentInstance::GetLifetimeReplicatedProps(TArray<class FLifetimePr
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ThisClass,SourceItemDef);
+	DOREPLIFETIME(ThisClass,SourceInstanceID);
+}
+
+void UIrisEquipmentInstance::OnGASAssetsLoaded()
+{
+	if (!IsValid(this) || !CachedASC) return;
+	
+	const UIrisInventoryItemFragment_Equippable* EquipDef = SourceItemDef->FindFragmentByClass<UIrisInventoryItemFragment_Equippable>();
+	if (!EquipDef) return;
+	
+	//Выдаем абилки (теперь они гарантированно в памяти)
+	for (const FEqupmentAbilitySet& AbilitySet : EquipDef->GrantedAbilities)
+	{
+		if (UClass* AbilityClass = AbilitySet.Ability.Get())
+		{
+			//TODO продумать выдачу абилок любого уровня (пока только 1й)
+			FGameplayAbilitySpec Spec(AbilityClass,1,INDEX_NONE,this);
+			Spec.GetDynamicSpecSourceTags().AddTag(AbilitySet.InputTag);
+			
+			FGameplayAbilitySpecHandle Handle = CachedASC->GiveAbility(Spec);
+			GrantedAbilityHandles.Add(Handle);
+		}
+	}
+	
+	//Накладываем эффекты
+	for (const TSoftClassPtr<UGameplayEffect>& EffectClassPtr : EquipDef->PassiveEffects)
+	{
+		if (UClass* EffectClass = EffectClassPtr.Get())
+		{
+			FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+			Context.AddInstigator(CachedASC->GetOwner(),CachedASC->GetOwner());
+			Context.AddSourceObject(this);
+			
+			UGameplayEffect* EffectCDO = EffectClass->GetDefaultObject<UGameplayEffect>();
+			
+			//TODO Продумать накладывание эффектов любого уровня (пока только 1й)
+			FActiveGameplayEffectHandle Handle = CachedASC->ApplyGameplayEffectToSelf(EffectCDO,1.f,Context);
+			GrantedEffectHandles.Add(Handle);
+		}
+	}
+	
+	GASLoadHandle.Reset();
+	
 }
 
 void UIrisEquipmentInstance::OnEquipped(){}
@@ -41,7 +85,7 @@ void UIrisEquipmentInstance::OnUnEquipped(){}
 void UIrisEquipmentInstance::GrantEquipmentDef(UAbilitySystemComponent* ASC,
                                                const UIrisInventoryItemDefinition* InItemDef)
 {
-	if (!ASC || !InItemDef || ASC->GetOwnerActor()->HasAuthority()) return;
+	if (!ASC || !InItemDef || !ASC->GetOwnerActor()->HasAuthority()) return;
 	
 	CachedASC = ASC;
 	SourceItemDef = InItemDef; //Клиенты получат реплицируемое значение
@@ -54,39 +98,34 @@ void UIrisEquipmentInstance::GrantEquipmentDef(UAbilitySystemComponent* ASC,
 		return;
 	}
 	
-	//Выдаем активные способности (Стрельба, Перезарядка)
+	//Собираем все пути для асинхронной загрузки
+	TArray<FSoftObjectPath> AssetsToLoad;
+	
 	for (const FEqupmentAbilitySet& AbilitySet : EquipDef->GrantedAbilities)
 	{
-		//TODO Переделать в дальнейшем на StreamableManager.RequestAsyncLoad() пока снхронно
-		if (UClass* AbilityClass = AbilitySet.Ability.LoadSynchronous())
+		if (!AbilitySet.Ability.IsNull())
 		{
-			FGameplayAbilitySpec Spec(AbilityClass,1,INDEX_NONE,this);
-			//Биндим инпут по тегу (Пример Item.Type.Weapon)
-			Spec.GetDynamicSpecSourceTags().AddTag(AbilitySet.InputTag);
-			
-			//Получаем и сохраняем Handle, чтобы позже сделать ClearAbility при Unequip
-			FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
-			GrantedAbilityHandles.Add(Handle);
+			AssetsToLoad.AddUnique(AbilitySet.Ability.ToSoftObjectPath());
 		}
 	}
 	
-	//Накидываем пассивные эффекты (Штраф к скорости, бонус к броне)
 	for (const TSoftClassPtr<UGameplayEffect>& EffectClassPtr : EquipDef->PassiveEffects)
 	{
-		//TODO Переделать в дальнейшем на StreamableManager.RequestAsyncLoad() пока снхронно
-		if (UClass* EffectClass = EffectClassPtr.LoadSynchronous())
+		if (!EffectClassPtr.IsNull())
 		{
-			FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-			Context.AddInstigator(ASC->GetOwner(),ASC->GetOwner());
-			Context.AddSourceObject(this);
-			
-			UGameplayEffect* EffectCDO = EffectClass->GetDefaultObject<UGameplayEffect>();
-			
-			//Накидываем эффект и сохраняем Handle для RemoveActiveGameplayEffect при Unequip
-			FActiveGameplayEffectHandle Handle = ASC->ApplyGameplayEffectToSelf(EffectCDO,1.f,Context);
-			GrantedEffectHandles.Add(Handle);
+			AssetsToLoad.AddUnique(EffectClassPtr.ToSoftObjectPath());
 		}
 	}
+	
+	//Если грузить нечего выходим
+	if (AssetsToLoad.IsEmpty()) return;
+	
+	//Запускаем пакетную загрузку
+	GASLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+		AssetsToLoad,
+		FStreamableDelegate::CreateUObject(this,&UIrisEquipmentInstance::OnGASAssetsLoaded)
+		);
+	
 }
 
 void UIrisEquipmentInstance::RevokeEquipmentDef()
@@ -120,7 +159,11 @@ void UIrisEquipmentInstance::SpawnEquipmentDef()
 	if (!EquipDef || EquipDef->EquipmentPrefab.IsNull()) return;
 	
 	UWorld* World = GetWorld();
-	AActor* OwningActor = Cast<AActor>(GetOuter());
+	
+	UActorComponent* ManagerComponent = Cast<UActorComponent>(GetOuter());
+	if (!ManagerComponent) return;
+	
+	AActor* OwningActor = ManagerComponent->GetOwner();
 	if (!World || !OwningActor) return;
 	
 	if (UClass* ActorClass = EquipDef->EquipmentPrefab.LoadSynchronous())
@@ -138,8 +181,8 @@ void UIrisEquipmentInstance::SpawnEquipmentDef()
 		{
 			if (ACharacter* Char = Cast<ACharacter>(OwningActor))
 			{
-				//TODO Продумать систему в которой будет фрагмент с сокетом для аттача и логики если он отсутствует
-				SpawnedActor->AttachToComponent(Char->GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,"WeaponSocket"); //TODO Затычка переделать после
+				FName SocketName = EquipDef->AttachSocket;
+				SpawnedActor->AttachToComponent(Char->GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,SocketName);
 			}
 			OnEquipped(); // Сигнал для Blueprint (Проиграть звук и т.д)
 		}

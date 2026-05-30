@@ -41,7 +41,7 @@ bool UIrisEquipmentManagerComponent::ReplicateSubobjects(class UActorChannel* Ch
 {
 	bool bRepSubobject = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
 	
-	//Итерируемся по L2 стейту и решистрируем каждый активный UObject в канал связи
+	//Итерируемся по L2 стейту и регистрируем каждый активный UObject в канал связи
 	for (const FIrisEquipmentEntry& Entry : EquipmentList.Entries)
 	{
 		if (Entry.Instance && IsValid(Entry.Instance))

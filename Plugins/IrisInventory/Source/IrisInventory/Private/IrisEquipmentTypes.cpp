@@ -32,7 +32,7 @@ UIrisEquipmentInstance* FIrisEquipmentList::AddEntry(TSubclassOf<UIrisEquipmentI
 	check(OwningActor->HasAuthority());
 	
 	//Аллоцируем инстанс
-	UIrisEquipmentInstance* NewInstance = NewObject<UIrisEquipmentInstance>(OwningActor,InstanceClass);
+	UIrisEquipmentInstance* NewInstance = NewObject<UIrisEquipmentInstance>(OwnerComponent,InstanceClass);
 	
 	//Добавляем в массив
 	FIrisEquipmentEntry& NewEntry = Entries.AddDefaulted_GetRef();

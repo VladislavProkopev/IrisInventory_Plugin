@@ -49,6 +49,8 @@ public:
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	//Храним Handle, чтобы отменить загрузку, если игрок дропнет оружие до ее завершения
+	TSharedPtr<struct FStreamableHandle> GASLoadHandle;
 private:
 	UPROPERTY()
 	TObjectPtr<UAbilitySystemComponent> CachedASC;
@@ -63,4 +65,6 @@ private:
 	//Храним хендлы, чтобы знать, что именно нужно забрать при смене оружия
 	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
 	TArray<FActiveGameplayEffectHandle> GrantedEffectHandles;
+	
+	void OnGASAssetsLoaded();
 };
