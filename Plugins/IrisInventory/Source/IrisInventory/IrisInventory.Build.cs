@@ -8,6 +8,12 @@ public class IrisInventory : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
+		//Включает поддержку Iris: ставит UE_NET_HAS_IRIS_FASTARRAY_BINDING=1 и UE_WITH_IRIS=1,
+		//без которых UHT генерирует UE_NET_IMPLEMENT_FASTARRAY_STUB вместо реальной привязки,
+		//и FastArray под Iris не реплицируется вовсе.
+		//IrisCore добавляется этим вызовом сам - отдельно перечислять не нужно
+		SetupIrisSupport(Target);
+		
 		PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
@@ -25,7 +31,11 @@ public class IrisInventory : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core","ModularGameplay",
+				"Core",
+				"ModularGameplay",
+				"CoreFeatures",
+				"GameFeatures",
+				"CoreUObject",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -34,17 +44,19 @@ public class IrisInventory : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"CoreUObject",
+				
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"IrisCore",
 				"GameplayTags",
+				"IrisCore",
 				"NetCore",
 				"StructUtils",
-				"CoreFeatures",
+				"GameplayAbilities",
+				"GameplayMessageRuntime",
+				"UMG",
 				
-				"GameplayAbilities", "GameplayMessageRuntime",
+
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

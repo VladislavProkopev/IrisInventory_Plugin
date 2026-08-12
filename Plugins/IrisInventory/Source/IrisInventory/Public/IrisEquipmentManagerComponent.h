@@ -32,7 +32,7 @@ public:
 	UIrisEquipmentInstance* EquipItemByID(int32 InventoryInstanceID);
 	
 	UFUNCTION(BlueprintCallable,Category="Equipment",BlueprintAuthorityOnly)
-	void UnequipItem(UIrisEquipmentInstance* ItemInstance);
+	void UnequipItem();
 	
 	static const FName NAME_ActorFeatureName;
 		
@@ -60,4 +60,7 @@ private:
 	TObjectPtr<UAbilitySystemComponent> CachedASC;
 	
 	void InitializeEquipmentSystem();
+	
+	UPROPERTY()
+	UIrisEquipmentInstance* EquippedItemInstance;
 };

@@ -6,6 +6,7 @@
 #include "IrisInventoryItemFragment.h"
 #include "IrisInventoryItemFragment_World.generated.h"
 
+class UStaticMesh;
 /**
  * 
  */

@@ -7,6 +7,9 @@ namespace CoreGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Input_Action_Move, "ADVM.Input.Action.Walk", "Trigger walk movement ability.");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Input_Action_Look, "ADVM.Input.Action.Look", "Trigger look movement ability.");
 		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Input_Action_Jump, "ADVM.Input.Action.Jump", "Trigger jump movement ability.");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Input_Action_LMB, "ADVM.Input.Action.LMB", "Trigger LMB ability.");
+		UE_DEFINE_GAMEPLAY_TAG_COMMENT(Input_Action_RMB, "ADVM.Input.Action.RMB", "Trigger RMB ability.");
+		
 	}
 	namespace InitStateTags
 	{
@@ -24,6 +27,10 @@ namespace CoreGameplayTags
 		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Weight, "Item.Stat.Weight");
 		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_BaseValue, "Item.Stat.BaseValue");
 		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Ammo_Current, "Item.Stat.Ammo_Current");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Ammo_MaxAmmo, "Item.Stat.Ammo_MaxAmmo");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Clip_Current, "Item.Stat.Clip_Current");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Clip_MaxClip, "Item.Stat.Clip_MaxClip");
+		UE_DEFINE_GAMEPLAY_TAG(Item_Stat_Damage_BaseDamage, "Item.Stat.Damage_BaseDamage");
 		
 		UE_DEFINE_GAMEPLAY_TAG(Item_State_StackCount, "Item.State.StackCount");
 		UE_DEFINE_GAMEPLAY_TAG(Item_State_Durability, "Item.State.Durability");

@@ -1,10 +1,13 @@
 ﻿#include "IrisInventoryComponent.h"
 
 #include "ItemPickup_Base.h"
+#include "TimerManager.h"
 #include "CoreFeatures/Public/CoreGameplayTags.h"
 #include "Components/GameFrameworkComponentDelegates.h"
 #include "Components/GameFrameworkComponentManager.h"
+#include "Engine/World.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
+#include "Inventory/Items/IrisInventoryFragment_Stackable.h"
 #include "Inventory/Items/IrisInventoryFragment_Stats.h"
 #include "Net/UnrealNetwork.h"
 
@@ -18,6 +21,41 @@ UIrisInventoryComponent::UIrisInventoryComponent(const FObjectInitializer& OI) :
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
+}
+
+int32 UIrisInventoryComponent::GetItemStatByInstanceID(int32 InstanceID, FGameplayTag StatTag) const
+{
+	const int32 SlotIndex = FindSlotByInstanceID(InstanceID);
+	if (!Inventory.Entries.IsValidIndex(SlotIndex)) return 0;
+
+	return Inventory.Entries[SlotIndex].GetStatValue(StatTag);
+}
+
+bool UIrisInventoryComponent::ModifyItemStatByInstanceID(int32 InstanceID, FGameplayTag StatTag, int32 Delta)
+{
+	if (!HasAuthority() || !StatTag.IsValid()) return false;
+	
+	//Ищем ОДИН раз и сразу проверяем результат: FindSlotByInstanceID возвращает
+	//INDEX_NONE (-1), а Entries[-1] это выход за границы массива
+	const int32 SlotIndex = FindSlotByInstanceID(InstanceID);
+	if (!Inventory.Entries.IsValidIndex(SlotIndex)) return false;
+
+	FIrisInventoryEntry& Entry = Inventory.Entries[SlotIndex];
+
+	//Состояние экземпляра есть только у уникальных предметов: у стака из 30 стрел
+	//нет "своей" прочности. Чаще всего сюда попадают с перепутанным InstanceID
+	if (!Entry.ItemDef || !Entry.ItemDef->GetInstanceStateFragment())
+	{
+		UE_LOG(Log_IrisInventoryComponent,Warning,
+			TEXT("[%s] Attempt to write stat to item %s without Instance State Fragment."),
+			ANSI_TO_TCHAR(__FUNCTION__),*GetNameSafe(Entry.ItemDef));
+		return false;
+	}
+
+	Entry.AddStat(StatTag,Delta);
+	Inventory.MarkItemDirty(Entry);
+
+	return true;
 }
 
 void UIrisInventoryComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -36,9 +74,17 @@ void UIrisInventoryComponent::DropItem(int32 InstanceID, int32 CountToDrop)
 	
 	const UIrisInventoryItemDefinition* ItemDefToDrop = Inventory.Entries[SlotIndex].ItemDef;
 	
+	//Зажимаем по фактическому размеру стака: RemoveEntryByID при CountToRemove >= StackCount
+	//снимает весь стак, сколько есть, а в пикап уходил запрошенный CountToDrop -
+	//на земле оказывалось больше, чем было в инвентаре
+	const int32 ActualDropCount = FMath::Min(CountToDrop,Inventory.Entries[SlotIndex].StackCount);
+	
+	//Политику спрашиваем здесь же - см. раздел 4
+	if (!CanRemoveItem(InstanceID,ActualDropCount)) return;
+	
 	//2. Уничтожаем данные в памяти (GC-Free)
 	//метод вернет true или false, если транзакция удалась. Для простоты опустим чек
-	Inventory.RemoveEntryByID(InstanceID,CountToDrop);
+	Inventory.RemoveEntryByID(InstanceID,ActualDropCount);
 	
 	//3. Материализация в мире
 	AActor* OwnerActor = GetOwner();
@@ -56,7 +102,7 @@ void UIrisInventoryComponent::DropItem(int32 InstanceID, int32 CountToDrop)
 	if (SpawnedPickup)
 	{
 		//Инжектим данные в сосуд до BeginPlay и репликации
-		SpawnedPickup->InitializePickup(ItemDefToDrop,CountToDrop);
+		SpawnedPickup->InitializePickup(ItemDefToDrop,ActualDropCount);
 		
 		SpawnedPickup->FinishSpawning(SpawnTransform);
 	}
@@ -87,12 +133,43 @@ int32 UIrisInventoryComponent::GetItemWeight(const UIrisInventoryItemDefinition*
 	if (!ItemDef) return 0;
 	
 	//0(1) lock-free чтение из CDO
-	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
+	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->GetStatsFragment())
 	{
 		return StatsFrag->GetItemStatByTag(CoreGameplayTags::InventoryTags::Item_Stat_Weight);
 	}
 	
 	return 0; //Если статов нет, предмет ничего не весит
+}
+
+void UIrisInventoryComponent::QueueItemsForGrant(const UIrisInventoryItemDefinition* ItemDef, int32 Count)
+{
+	if (!ItemDef || Count <= 0 || !GetOwner()->HasAuthority()) return;
+
+	GrantQueue.Enqueue({ItemDef, Count});
+
+	// Запускаем таймер дозатора (20 FPS), если он спит
+	if (!GetWorld()->GetTimerManager().IsTimerActive(GrantQueueTimerHandle))
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			GrantQueueTimerHandle, this, &UIrisInventoryComponent::ProcessGrantQueue, 0.05f, true);
+	}
+}
+
+void UIrisInventoryComponent::ProcessGrantQueue()
+{
+	int32 ProcessedCount = 0;
+	FIrisPendingGrant Request;
+
+	while (ProcessedCount < MaxGrantsPerTick && GrantQueue.Dequeue(Request))
+	{
+		Inventory.AddEntry_Batched(Request.ItemDef, Request.Count);
+		ProcessedCount++;
+	}
+
+	if (GrantQueue.IsEmpty())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(GrantQueueTimerHandle);
+	}
 }
 
 void UIrisInventoryComponent::BeginPlay()
@@ -186,6 +263,8 @@ int32 UIrisInventoryComponent::GetTotalItemCountByTag(FGameplayTag ItemTag) cons
 	{
 		if (Entry.IsValid())
 		{
+			//------------------------------------------------------------------------------------------------------------------------
+			/*TODO Refactor Coment
 			//Проверяем фрагмент статов на наличие тега(например, Item_Type_Consumable)
 			if (const UIrisInventoryFragment_Stats* StatsFrag = Entry.ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
 			{
@@ -193,6 +272,16 @@ int32 UIrisInventoryComponent::GetTotalItemCountByTag(FGameplayTag ItemTag) cons
 				{
 					TotalCount+=Entry.StackCount;
 				}
+			}
+			*/
+			//------------------------------------------------------------------------------------------------------------------------
+			
+			//Классификация лежит в ItemTags, а не в карте статов.
+			//Заодно уходит FindFragmentByClass из цикла: метод зовётся из GAS CheckCost,
+			//потенциально каждый кадр при зажатой кнопке
+			if (Entry.ItemDef->ItemTags.HasTag(ItemTag))
+			{
+				TotalCount+=Entry.StackCount;
 			}
 		}
 	}
@@ -203,7 +292,7 @@ int32 UIrisInventoryComponent::ConsumeItemByTag(FGameplayTag ItemTag, int32 Coun
 {
 	if (!HasAuthority() || CountToConsume<=0) return 0;
 	
-	int32 RemainingToConsume = 0;
+	int32 RemainingToConsume = CountToConsume;
 	int32 ActuallyConsumed = 0;
 	
 	//Идем с конца, так как RemoveAtSwap меняет индексы, если мы будем удалять предметы
@@ -216,9 +305,30 @@ int32 UIrisInventoryComponent::ConsumeItemByTag(FGameplayTag ItemTag, int32 Coun
 		{
 			if (const UIrisInventoryFragment_Stats* StatsFrag = Entry.ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
 			{
-				if (StatsFrag->InitialItemStats.Contains(ItemTag))
+				if (Entry.ItemDef->ItemTags.HasTagExact(ItemTag))
 				{
 					int32 ConsumeFromStack = FMath::Min(RemainingToConsume,Entry.StackCount);
+					
+					//-----------------------------------------------------------------------------------------------
+					
+					/* TODO Посмотреть дальнейшую реализацию и логику перед принятием решения
+					*Цена, раз производительность в приоритете.** `CanRemoveItem` — `BlueprintNativeEvent`. 
+					*Пока дизайнер не переопределил его в блюпринте, вызывается C++-реализация напрямую,
+					*VM не задействована. Как только оверрайд появится — это вызов виртуальной машины на
+					*каждый подходящий стак в цикле.
+					*Для холодного пути (списание по действию игрока) это приемлемо.
+					*Если `ConsumeItemByTag` окажется в горячем пути — например, GAS-кост,
+					*проверяемый каждый кадр при зажатой кнопке, — тогда политику надо будет спрашивать
+					*один раз до цикла, а не на каждый стак.
+					*Сейчас так не делаю: не знаю твоих сценариев, а преждевременное усложнение здесь дороже вызова.
+					 */
+					
+					//Политика может запретить трогать конкретный стак (квестовый предмет).
+					//Пропускаем его и идём дальше - остальные стаки того же типа списать можно
+					if (!CanRemoveItem(Entry.InstanceID,ConsumeFromStack)) continue;
+					
+					//-----------------------------------------------------------------------------------------------
+					
 					Inventory.RemoveEntryByID(Entry.InstanceID,ConsumeFromStack);
 					
 					RemainingToConsume -= ConsumeFromStack;
@@ -237,9 +347,24 @@ int32 UIrisInventoryComponent::ConsumeItemByTag(FGameplayTag ItemTag, int32 Coun
 
 int32 UIrisInventoryComponent::GetMaxStackSize(const UIrisInventoryItemDefinition* ItemDef) const
 {
+	//-----------------------------------------------------------------------------------------------------------------------
+	/*TODO RefactorComment
 	if (const UIrisInventoryFragment_Stats* StatsFrag = ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
 	{
 		return FMath::Max(1,StatsFrag->GetItemStatByTag(CoreGameplayTags::InventoryTags::Item_Stat_MaxStackSize));
+	}
+	return 1;
+	*/
+	//-----------------------------------------------------------------------------------------------------------------------
+	
+	if (!ItemDef) return 1;
+	
+	//Единственный источник истины - Stackable-фрагмент. Тег Item.Stat.MaxStackSize
+	//из Stats-фрагмента больше не читаем: два источника расходились между
+	//GetMaxStackSize и AddEntry_Batched/MergeEntries
+	if (const UIrisInventoryFragment_Stackable* StackFrag = ItemDef->GetStackableFragment())
+	{
+		return FMath::Max(1,StackFrag->MaxStackSize);
 	}
 	return 1;
 }
@@ -257,21 +382,36 @@ FIrisInventoryAddResult UIrisInventoryComponent::AddEntry(const UIrisInventoryIt
 	//Спрашиваем политику: Сколько можно положить
 	int32 AllowedCount = CalculateAllowedAddAmount(ItemDef,CountToAdd);
 	
+	//---------------------------------------------------------------------------------------------
+	/*TODO Refactor Commit
 	Result.ActuallyAdded = AllowedCount;
 	Result.RejectedCount = CountToAdd - AllowedCount;
-	
+
 	//Если что-то не влезло - передаем в сетевой стейт L2
 	if (AllowedCount > 0)
 	{
 		Inventory.CreateNewEntry(ItemDef,AllowedCount);
 	}
-	
+	*/
 	//Компонент больше не занимается спавном Drop-акторов
 	//Он просто возвращает чек
+	//return Result;
+	//---------------------------------------------------------------------------------------------
 	
-	return Result;
 	
+
+	//Раскладку по стакам делает L2: он уважает MaxStackSize и доливает в неполные.
+	//CreateNewEntry здесь нельзя - он свалит весь AllowedCount в одну запись
+	if (AllowedCount > 0)
+	{
+		Result = Inventory.AddEntry_Batched(ItemDef,AllowedCount);
+	}
 	
+	//Восстанавливаем внешний контекст запроса: L2 знает только про количество,
+	//разрешённое политикой, и посчитал бы RejectedCount от него
+	Result.RequestedCount = CountToAdd;
+	Result.RejectedCount = CountToAdd - Result.ActuallyAdded;
+
 	/*
 	if (!ItemDef || CountToAdd <= 0 || HasAuthority()) return;
 	
@@ -354,7 +494,7 @@ bool UIrisInventoryComponent::CanChangeInitState(UGameFrameworkComponentManager*
 	check(Manager);
 	APawn* Pawn = GetPawn<APawn>();
 	if (!Pawn) return false;
-	
+
 	if (CurrentState == CoreGameplayTags::InitStateTags::InitState_Spawned && DesiredState == CoreGameplayTags::InitStateTags::InitState_DataAvaliable)
 	{
 		return Manager->HasFeatureReachedInitState(Pawn,FName("PawnExtension"),CoreGameplayTags::InitStateTags::InitState_DataAvaliable);
@@ -365,7 +505,7 @@ bool UIrisInventoryComponent::CanChangeInitState(UGameFrameworkComponentManager*
 	}
 	if (CurrentState == CoreGameplayTags::InitStateTags::InitState_DataInitialized && DesiredState == CoreGameplayTags::InitStateTags::InitState_GameplayReady)
 	{
-		return true;		
+		return true;
 	}
 	return false;
 }
@@ -405,11 +545,13 @@ int32 UIrisInventoryComponent::CalculateAllowedAddAmount_Implementation(const UI
 	//входной RequestCount в Return Node - вес перестанет работать
 	if (MaxWeight<=0) return RequestedCount;
 	
-	float ItemWeight = GetItemWeight(ItemDef);
+	//TODO Refactor Comment
+	//float ItemWeight = GetItemWeight(ItemDef);
+	const int32 ItemWeight = GetItemWeight(ItemDef);
 	if (ItemWeight <= 0) return RequestedCount; //Предмет ничего не весит
 	
-	int32 FreeWeight = FMath::Max(0.f,MaxWeight-CurrentWeight);
-	int32 AllowedByWeight = FreeWeight/ItemWeight;
+	const int32 FreeWeight = FMath::Max(0.f,MaxWeight-CurrentWeight);
+	const int32 AllowedByWeight = FreeWeight/ItemWeight;
 	
 	return FMath::Min(RequestedCount,AllowedByWeight);
 }

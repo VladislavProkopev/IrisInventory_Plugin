@@ -3,9 +3,11 @@
 
 #include "IrisEquipmentInstance.h"
 #include "AbilitySystemComponent.h"
+#include "GameFeatureAction_AddIrisLoadout.h"
 #include "GameplayAbilitySpec.h"
 #include "Engine/AssetManager.h"
-#include "GameFramework/Character.h"
+#include "CoreFeatures/Public/Inventory/Interfaces/IrisEquipmentMountInterface.h"
+#include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "Inventory/Items/IrisInventoryItemDefinition.h"
 
@@ -36,6 +38,25 @@ void UIrisEquipmentInstance::GetLifetimeReplicatedProps(TArray<class FLifetimePr
 
 void UIrisEquipmentInstance::OnGASAssetsLoaded()
 {
+	//---------------------------------------------------------------------------------------------------------------
+	//TODO Refactor comment
+	
+	/*
+	*Сейчас функция выходит на первой строке всегда, кроме одного случая:
+	*если ассеты уже в памяти, стример дёргает делегат **синхронно внутри**
+	*`RequestAsyncLoad`, и присваивание `GASLoadHandle = ...` ещё не произошло. Тогда код отрабатывает.
+	*То есть поведение зависит от того, грузил ли кто-то эти абилки раньше.
+	*На тестах будет «иногда работает» — хуже стабильного отказа.
+	 */
+	
+	//Если предмет сняли или прервали загрузку - прерываемся
+	//if (!IsValid(this) || !CachedASC || GASLoadHandle.IsValid()) return;
+	//---------------------------------------------------------------------------------------------------------------
+	
+	//Если предмет сняли - прерываемся.
+	//Проверки GASLoadHandle здесь быть не должно: это колбэк самой загрузки, хендл
+	//на этот момент всегда валиден (сбрасывается ниже), и условие всегда истинно.
+	//Отмену уже покрывает RevokeEquipmentDef - он зовёт CancelHandle и Reset
 	if (!IsValid(this) || !CachedASC) return;
 	
 	const UIrisInventoryItemFragment_Equippable* EquipDef = SourceItemDef->FindFragmentByClass<UIrisInventoryItemFragment_Equippable>();
@@ -132,6 +153,13 @@ void UIrisEquipmentInstance::RevokeEquipmentDef()
 {
 	if (!CachedASC || !CachedASC->GetOwnerActor()->HasAuthority()) return;
 	
+	//Отменяем загрузку ассетов, если предмет сняли до ее завершения
+	if (GASLoadHandle.IsValid() && GASLoadHandle->IsActive())
+	{
+		GASLoadHandle->CancelHandle();
+		GASLoadHandle.Reset();
+	}
+	
 	for (const FGameplayAbilitySpecHandle& Handle : GrantedAbilityHandles)
 	{
 		CachedASC->ClearAbility(Handle);
@@ -166,6 +194,7 @@ void UIrisEquipmentInstance::SpawnEquipmentDef()
 	AActor* OwningActor = ManagerComponent->GetOwner();
 	if (!World || !OwningActor) return;
 	
+	//TODO поменять на асинхронный
 	if (UClass* ActorClass = EquipDef->EquipmentPrefab.LoadSynchronous())
 	{
 		FActorSpawnParameters SpawnParams;
@@ -179,12 +208,30 @@ void UIrisEquipmentInstance::SpawnEquipmentDef()
 		//Аттачим к сокету
 		if (SpawnedActor)
 		{
-			if (ACharacter* Char = Cast<ACharacter>(OwningActor))
+			USceneComponent* AttachTarget = nullptr;
+			FName SocketName = EquipDef->AttachSocket;
+			
+			if (OwningActor->Implements<UIrisEquipmentMountInterface>())
+			{
+				AttachTarget = IIrisEquipmentMountInterface::Execute_GetMountComponentForSocket(OwningActor,SocketName);
+			}
+			else
+			{
+				AttachTarget = OwningActor->GetRootComponent();
+				UE_LOG(Log_IrisEquipmentInstance,Warning,TEXT("[%s] OwningActor %s dosen't implement IIrisEquipmentMountInterface ot returned null. Attached to Root."),ANSI_TO_TCHAR(__FUNCTION__),*OwningActor->GetName());
+				
+			}
+			
+			SpawnedActor->AttachToComponent(AttachTarget,FAttachmentTransformRules::SnapToTargetIncludingScale,SocketName);
+			OnEquipped(); //Сигнал для BP (Проиграть звук и т.д)
+			
+			//Старая реализация не использующая интерфейсы
+			/*if (ACharacter* Char = Cast<ACharacter>(OwningActor))
 			{
 				FName SocketName = EquipDef->AttachSocket;
 				SpawnedActor->AttachToComponent(Char->GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,SocketName);
 			}
-			OnEquipped(); // Сигнал для Blueprint (Проиграть звук и т.д)
+			OnEquipped(); // Сигнал для Blueprint (Проиграть звук и т.д)*/
 		}
 	}
 }

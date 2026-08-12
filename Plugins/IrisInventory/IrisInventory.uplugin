@@ -41,6 +41,14 @@
       {
         "Name": "GameplayMessageRouter",
         "Enabled": true
+      },
+      {
+        "Name": "GameFeatures",
+        "Enabled": true
+      },
+      {
+        "Name": "Iris",
+        "Enabled": true
       }
     ]
 }

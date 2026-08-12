@@ -54,6 +54,7 @@ public:
 	
 	//Пассивные баффы
 	//Накладываются (ApplyGameplayEffect) при экипировке, снимаются при снятии экипировки
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="GAS|Effects")
 	TArray<TSoftClassPtr<UGameplayEffect>> PassiveEffects;
 	
 	//Слот экипировки

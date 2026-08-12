@@ -6,7 +6,7 @@
 #include "Components/PawnComponent.h"
 #include "PawnExtensionComponent.generated.h"
 
-#define UE_API PETPROJECT_API
+//#define UE_API PETPROJECT_API
 
 UCLASS(MinimalAPI)
 class UPawnExtensionComponent : public UPawnComponent , public IGameFrameworkInitStateInterface

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "CoreMinimal.h"
 #include "Net/Serialization/FastArraySerializer.h"
+#include "Templates/SubclassOf.h"
 #include "IrisEquipmentTypes.generated.h"
 
 class UIrisEquipmentInstance;

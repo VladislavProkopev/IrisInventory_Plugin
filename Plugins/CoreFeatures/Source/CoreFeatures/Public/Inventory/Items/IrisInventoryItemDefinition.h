@@ -5,8 +5,11 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "IrisInventoryItemFragment.h"
+#include "GameplayTagContainer.h"
 #include "IrisInventoryItemDefinition.generated.h"
 
+class UIrisInventoryFragment_Stats;
+class UIrisInventoryFragment_Stackable;
 /**
  * 
  */
@@ -15,6 +18,25 @@ class COREFEATURES_API UIrisInventoryItemDefinition : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 public:
+	
+	//Прямой доступ к фрагментам, которые читаются на каждое добавление предмета.
+	//Остальные оставлены на FindFragmentByClass: они холодные (экипировка, спавн визуала),
+	//а поле на каждый тип фрагмента превратило бы определение в свалку
+	const UIrisInventoryFragment_Stats*     GetStatsFragment()     const { return CachedStats; }
+	const UIrisInventoryFragment_Stackable* GetStackableFragment() const { return CachedStackable; }
+
+	virtual void PostLoad() override;
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+	
+	//Классификация предмета: Item.Type.*, Item.Rarity.*, Item.Quest.* и подобное.
+	//Живёт в CDO, читается lock-free. Отдельно от InitialItemStats: там ЗНАЧЕНИЯ
+	//статов (вес, размер стака), здесь ПРИНАДЛЕЖНОСТЬ к категориям.
+	//Смешивать их нельзя - именно на этом ломались GetTotalItemCountByTag и ConsumeItemByTag
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Item")
+	FGameplayTagContainer ItemTags;
+	
 	//Идентификатор типа для AssetManager
 	//в ProjectSettings -> AssetManager нужно создать Primary Asset Type с именем "InventoryItem"
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override
@@ -43,4 +65,13 @@ protected:
 	// а нам нужно, чтобы фрагменты сериализовались прямо внутрь UIrisInventoryItemDefinition
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Instanced,Category=Fragments)
 	TArray<TObjectPtr<UIrisInventoryItemFragment>> Fragments;
+	
+private:
+	void RebuildFragmentCache();
+
+	UPROPERTY(Transient)
+	TObjectPtr<const UIrisInventoryFragment_Stats> CachedStats = nullptr;
+
+	UPROPERTY(Transient)
+	TObjectPtr<const UIrisInventoryFragment_Stackable> CachedStackable = nullptr;
 };

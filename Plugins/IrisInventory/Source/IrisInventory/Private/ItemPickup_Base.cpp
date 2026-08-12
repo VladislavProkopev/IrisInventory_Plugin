@@ -5,7 +5,9 @@
 
 #include "IrisInventoryComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/AssetManager.h"
+#include "Engine/StaticMesh.h"
 #include "Inventory/Items/IrisInventoryItemFragment_World.h"
 #include "Net/UnrealNetwork.h"
 

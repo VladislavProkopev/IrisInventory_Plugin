@@ -7,11 +7,17 @@
 #include "Components/GameFrameworkInitStateInterface.h"
 #include "IrisInventoryComponent.generated.h"
 
-/* Переход на GMR
+/* TODO Переход на GMR отменяется поэже переделать на MVVM
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FIrisInventoryItemRemovedSignature, const UIrisInventoryItemDefinition*, RemovedItemDef);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FIrisInventoryItemAddedSignature, const UIrisInventoryItemDefinition*, AddedItemDef,int32,NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FIrisInventoryItemUpdatedSignature, const UIrisInventoryItemDefinition*, UpdatedItemDef,int32,NewCount);
 */
+
+struct FIrisPendingGrant
+{
+	const UIrisInventoryItemDefinition* ItemDef;
+	int32 Count;
+};
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class IRISINVENTORY_API UIrisInventoryComponent : public UPawnComponent, public IGameFrameworkInitStateInterface,public IIrisInventoryInterface
@@ -21,9 +27,14 @@ class IRISINVENTORY_API UIrisInventoryComponent : public UPawnComponent, public 
 public:
 	UIrisInventoryComponent(const FObjectInitializer& OI);
 	
+	//Инкрементальный учёт веса. Полный пересчёт проходом по массиву на каждую
+	//мутацию при 1000 инвентарях недопустим, поэтому вес правится там, где меняется
+	//количество - в мутаторах FIrisInventoryList
+	void ApplyWeightDelta(int32 Delta) { CurrentWeight = FMath::Max(0,CurrentWeight + Delta); }
+	
 	//~ IIrisInventoryInterface
-	virtual int32 GetItemStat(int32 SlotIndex, FGameplayTag StatTag) const override;
-	virtual void ModifyItemStat(int32 SlotIndex, FGameplayTag StatTag, int32 Delta) override;
+	virtual int32 GetItemStatByInstanceID(int32 InstanceID, FGameplayTag StatTag) const override;
+	virtual bool ModifyItemStatByInstanceID(int32 InstanceID, FGameplayTag StatTag, int32 Delta) override;
 	virtual const UIrisInventoryItemDefinition* GetItemDefAtSlot(int32 SlotIndex) const override;
 	virtual int32 FindSlotByInstanceID(int32 InstanceID) const override;
 	virtual bool RemoveItemByInstanceID(int32 InstanceID,int32 CountToRemove) override;
@@ -32,7 +43,7 @@ public:
 	//~ End IIrisInventoryInterface
 	
 	static const FName NAME_ActorFeatureName;
-	
+
 	//~ IGameFrameworkInitStateInterface
 	virtual FName GetFeatureName() const override;
 	virtual bool CanChangeInitState(UGameFrameworkComponentManager* Manager, FGameplayTag CurrentState, FGameplayTag DesiredState) const override;
@@ -49,7 +60,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "IrisInventory|Operations",BlueprintAuthorityOnly)
 	FIrisInventoryAddResult AddEntry(const UIrisInventoryItemDefinition* ItemDef,int32 CountToAdd);
 	
-	/* Переход на GMR
+	//TODO добавить удалить все и подобные методы
+	
+	/* TODO Переход на GMR отменяется поэже переделать на MVVM
 	//Делегаты для обратной совместимости в EquipmentManager
 	UPROPERTY(BlueprintAssignable,Category="IrisInventory|Events")
 	FIrisInventoryItemRemovedSignature OnItemRemoved;
@@ -69,10 +82,10 @@ public:
 		return NextInstanceIU++;
 	}
 	
-	UFUNCTION(Blueprintable,Category="IrisInventory|Operations",BlueprintAuthorityOnly)
+	UFUNCTION(BlueprintCallable,Category="IrisInventory|Operations",BlueprintAuthorityOnly)
 	bool MergeStacks(int32 SourceInstanceID, int32 TargetInstanceID);
 	
-	UFUNCTION(Blueprintable,Category="IrisInventory|Operations",BlueprintAuthorityOnly)
+	UFUNCTION(BlueprintCallable,Category="IrisInventory|Operations",BlueprintAuthorityOnly)
 	int32 SplitStack(int32 SourceInstanceID, int32 AmountToSplit);
 	
 	UPROPERTY(EditDefaultsOnly,Category="IrisInventory|Config")
@@ -104,6 +117,9 @@ public:
 	
 	//Вспомогательный метод для получения веса 1 штуки из L1 CDO
 	virtual int32 GetItemWeight(const UIrisInventoryItemDefinition* ItemDef) const;
+	
+	void QueueItemsForGrant(const UIrisInventoryItemDefinition* ItemDef, int32 Count);
+	void ProcessGrantQueue();
 protected:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
@@ -124,6 +140,10 @@ private:
 	
 	int32 GetMaxStackSize(const UIrisInventoryItemDefinition* ItemDef) const;
 	
-	//Серверный счетчик. Не имеет UPROPERTY(), не репличируется
+	//Серверный счетчик. Не имеет UPROPERTY(), не реплицируется
 	int32 NextInstanceIU = 1;
+	
+	TQueue<FIrisPendingGrant> GrantQueue;
+	FTimerHandle GrantQueueTimerHandle;
+	int32 MaxGrantsPerTick = 25; // Безопасный лимит для сети
 };

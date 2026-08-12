@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.7",
+	"EngineAssociation": "{F36C22CE-44D4-598B-3A03-558886DE1E00}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -128,10 +128,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "MassEntity",
-			"Enabled": true
-		},
-		{
 			"Name": "MassGameplay",
 			"Enabled": true
 		},
@@ -254,6 +250,14 @@
 			"Name": "GF_AdvancedMovement",
 			"Enabled": true
 		},
+      {
+        "Name": "IrisInventory",
+        "Enabled": true
+      },
+      {
+        "Name": "CombatCoreGASIris",
+        "Enabled": true
+      },
 		{
 			"Name": "VisualStudioTools",
 			"Enabled": false,

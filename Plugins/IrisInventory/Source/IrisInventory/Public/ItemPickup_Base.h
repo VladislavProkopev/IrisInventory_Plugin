@@ -36,7 +36,7 @@ protected:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Components")
 	TObjectPtr<UStaticMeshComponent> VisualMesh;
 	
-	UPROPERTY(ReplicatedUsing=OnRep_PickupData)
+	UPROPERTY(EditDefaultsOnly, ReplicatedUsing=OnRep_PickupData)
 	TSoftObjectPtr<const UIrisInventoryItemDefinition> ItemDef;
 	
 	UPROPERTY(Replicated)

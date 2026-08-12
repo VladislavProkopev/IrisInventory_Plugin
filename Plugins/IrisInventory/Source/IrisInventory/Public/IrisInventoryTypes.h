@@ -51,7 +51,7 @@ struct FIrisInventoryAddResult
 	//Сколько не влезло (из-за лимита веса или кастомной логики)
 	UPROPERTY(BlueprintReadOnly,Category="IrisInventory|Result")
 	int32 RejectedCount = 0;
-	
+
 	bool IsFullySuccessful() const {return RequestedCount > 0 && RequestedCount == ActuallyAdded;}
 	bool IsPartiallySuccessful() const {return ActuallyAdded > 0 && RejectedCount > 0;}
 };
@@ -118,6 +118,15 @@ struct FIrisInventoryList : public FFastArraySerializer
 	
 	FIrisInventoryListChangedSignature OnListChanged;
 	
+	/*
+	 *Учёт веса при изменении количества. CountDelta знаковая:
+	 *положительная при добавлении, отрицательная при снятии.
+	 *
+	 *Отдельный метод, чтобы на местах вызова нельзя было перепутать знак
+	 *и чтобы формула веса лежала в одном месте
+	 */
+	void ApplyWeightForItems(const UIrisInventoryItemDefinition* ItemDef, int32 CountDelta);
+	
 	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParams)
 	{
 		return FFastArraySerializer::FastArrayDeltaSerialize<FIrisInventoryEntry, FIrisInventoryList>(Entries, DeltaParams,*this);
@@ -148,6 +157,10 @@ struct FIrisInventoryList : public FFastArraySerializer
 	//NotReplicated обязательно, иначе Iris попытается сериализовать весь компонент
 	UPROPERTY(NotReplicated)
 	TObjectPtr<UIrisInventoryComponent> OwnerComponent = nullptr;
+	
+	FIrisInventoryAddResult AddEntry_Batched(const UIrisInventoryItemDefinition* ItemDef, int32 Count);
+	
+		
 };
 
 // ---------------------------------------------------------

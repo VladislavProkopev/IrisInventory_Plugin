@@ -5,8 +5,10 @@
 
 #include "AbilitySystemComponent.h"
 #include "CC_WeaponBase.h"
+#include "CollisionQueryParams.h"
 #include "CoreGameplayTags.h"
 #include "IrisInventoryComponent.h"
+#include "Engine/World.h"
 #include "Inventory/Items/IrisInventoryFragment_WeaponBallistics.h"
 #include "IrisInventory/Public/IrisEquipmentInstance.h"
 
@@ -116,7 +118,7 @@ void UCC_WeaponFire_Hitscan::ApplyCost(const FGameplayAbilitySpecHandle Handle,
 	if (!CachedInventoryComponent || CachedInstanceID == INDEX_NONE) return;
 	
 	const int32 CurrentWeaponSlotIndex = CachedInventoryComponent->FindSlotByInstanceID(CachedInstanceID);
-	if (!CurrentWeaponSlotIndex) return;
+	if (CurrentWeaponSlotIndex == INDEX_NONE) return;
 	
 	CachedInventoryComponent->ModifyItemStat(CurrentWeaponSlotIndex,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current,-1);
 }

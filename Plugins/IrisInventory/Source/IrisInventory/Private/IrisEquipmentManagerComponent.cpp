@@ -75,6 +75,7 @@ UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItemByInstance(cons
 		NewInstance->SpawnEquipmentDef();
 	}
 	
+	EquippedItemInstance = NewInstance;
 	return NewInstance;
 }
 
@@ -99,16 +100,17 @@ UIrisEquipmentInstance* UIrisEquipmentManagerComponent::EquipItemByID(int32 Inve
 		NewInstance->OnEquipped();
 	}
 	
+	EquippedItemInstance = NewInstance;
 	return NewInstance;
 }
 
-void UIrisEquipmentManagerComponent::UnequipItem(UIrisEquipmentInstance* ItemInstance)
+void UIrisEquipmentManagerComponent::UnequipItem()
 {
-	if (!ItemInstance || !GetOwner()->HasAuthority()) return;
+	if (!EquippedItemInstance || !GetOwner()->HasAuthority()) return;
 	
 	//Делигируем удаление в L2
 	//Метод RemoveEntry сам вызовет DestroyEquipmentDef перед очисткой памяти.
-	EquipmentList.RemoveEntry(ItemInstance);
+	EquipmentList.RemoveEntry(EquippedItemInstance);
 }
 
 // ----------------------------------------------------------------------
@@ -119,8 +121,17 @@ void UIrisEquipmentManagerComponent::InitializeEquipmentSystem()
 {
 	//Безопасное кеширование ASC (Теперь он на 100% готов)
 	CachedASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(GetOwner());
-	check(CachedASC);
-		
+	
+	if (!CachedASC)
+	{
+		//ASC не обязателен: компонент может висеть на акторе без GAS - тестовый моб,
+		//ящик, разрушаемый объект. Тогда экипировка работает как визуал и стейт,
+		//без выдачи абилок. Ронять игру за это нельзя
+		UE_LOG(Log_IrisEquipmentManagerComponent,Log,
+		TEXT("[%s] Actor %s has no AbilitySystemComponent. Equipment will work without GAS grants."),
+		ANSI_TO_TCHAR(__FUNCTION__),*GetNameSafe(GetOwner()));
+	}
+
 	//Оповкщаем GFCM, что EquipmentManager готов к геймплею
 	UGameFrameworkComponentManager* GFCM = UGameFrameworkComponentManager::GetForActor(GetOwner());
 	if (GFCM)
@@ -130,7 +141,7 @@ void UIrisEquipmentManagerComponent::InitializeEquipmentSystem()
 			UIrisEquipmentManagerComponent::NAME_ActorFeatureName,
 			this,
 			CoreGameplayTags::InitStateTags::InitState_GameplayReady);
-		
+
 	}
 }
 
@@ -143,7 +154,7 @@ bool UIrisEquipmentManagerComponent::CanChangeInitState(UGameFrameworkComponentM
 	FGameplayTag CurrentState, FGameplayTag DesiredState) const
 {
 	check(Manager);
-	
+
 	if (!CurrentState.IsValid() && DesiredState == CoreGameplayTags::InitStateTags::InitState_DataAvaliable)
 	{
 		return true;
@@ -158,7 +169,7 @@ bool UIrisEquipmentManagerComponent::CanChangeInitState(UGameFrameworkComponentM
 			return false;
 		}
 		return Manager->HasFeatureReachedInitState(GetOwner(),UIrisInventoryComponent::NAME_ActorFeatureName,CoreGameplayTags::InitStateTags::InitState_DataAvaliable);
-		
+
 	}
 	return true;
 }
@@ -186,7 +197,7 @@ void UIrisEquipmentManagerComponent::CheckDefaultInitialization()
 void UIrisEquipmentManagerComponent::OnRegister()
 {
 	Super::OnRegister();
-	
+
 	RegisterInitStateFeature();
 }
 
