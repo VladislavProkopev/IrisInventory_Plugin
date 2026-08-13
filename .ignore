@@ -1,0 +1,17 @@
+/Content
+/.idea
+/.git
+/Intermediate
+/.vscode
+/.claude
+/Saved
+/Plugins/CombatCoreGASIris/Intermediate
+/Plugins/GameplayMessageRouter/Intermediate
+/Plugins/IrisInventory/Intermediate
+/Plugins/SuppliesCoreGASIris/Intermediate
+/Plugins/GameFeatures/GF_AdvancedMovement/Content
+/Plugins/GameFeatures/GF_AdvancedMovement/Intermediate
+/Plugins/CoreFeatures/Intermediate
+/Plugins/ModularGameplayActors/Intermediate
+/Plugins/AdvancedMovement/Content
+/Plugins/AdvancedMovement/Intermediate

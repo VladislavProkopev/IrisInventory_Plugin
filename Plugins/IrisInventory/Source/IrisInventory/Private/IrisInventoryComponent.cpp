@@ -7,6 +7,7 @@
 #include "Components/GameFrameworkComponentManager.h"
 #include "Engine/World.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
+#include "Inventory/Items/IrisInventoryFragment_InstanceState.h"
 #include "Inventory/Items/IrisInventoryFragment_Stackable.h"
 #include "Inventory/Items/IrisInventoryFragment_Stats.h"
 #include "Net/UnrealNetwork.h"
@@ -192,24 +193,7 @@ void UIrisInventoryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 // ----------------------------------------------------------------------
 // ИНТЕРФЕЙС ИНВЕНТАРЯ (ЧТЕНИЕ И МУТАЦИЯ)
 // ----------------------------------------------------------------------
-int32 UIrisInventoryComponent::GetItemStat(int32 SlotIndex, FGameplayTag StatTag) const
-{
-	if (Inventory.Entries.IsValidIndex(SlotIndex))
-	{
-		return Inventory.Entries[SlotIndex].GetStatValue(StatTag);
-	}
-	return 0;
-}
 
-void UIrisInventoryComponent::ModifyItemStat(int32 SlotIndex, FGameplayTag StatTag, int32 Delta)
-{
-	if (!GetOwner()->HasAuthority() || !Inventory.Entries.IsValidIndex(SlotIndex)) return;
-	
-	FIrisInventoryEntry& Entry = Inventory.Entries[SlotIndex];
-	Entry.AddStat(StatTag,Delta); //Используем метод из структуры
-	
-	Inventory.MarkItemDirty(Entry);
-}
 
 const UIrisInventoryItemDefinition* UIrisInventoryComponent::GetItemDefAtSlot(int32 SlotIndex) const
 {
@@ -279,7 +263,7 @@ int32 UIrisInventoryComponent::GetTotalItemCountByTag(FGameplayTag ItemTag) cons
 			//Классификация лежит в ItemTags, а не в карте статов.
 			//Заодно уходит FindFragmentByClass из цикла: метод зовётся из GAS CheckCost,
 			//потенциально каждый кадр при зажатой кнопке
-			if (Entry.ItemDef->ItemTags.HasTag(ItemTag))
+			if (Entry.ItemDef->ItemTags.HasTagExact(ItemTag))
 			{
 				TotalCount+=Entry.StackCount;
 			}
@@ -301,46 +285,18 @@ int32 UIrisInventoryComponent::ConsumeItemByTag(FGameplayTag ItemTag, int32 Coun
 	{
 		FIrisInventoryEntry& Entry = Inventory.Entries[i];
 		
-		if (Entry.IsValid())
-		{
-			if (const UIrisInventoryFragment_Stats* StatsFrag = Entry.ItemDef->FindFragmentByClass<UIrisInventoryFragment_Stats>())
-			{
-				if (Entry.ItemDef->ItemTags.HasTagExact(ItemTag))
-				{
-					int32 ConsumeFromStack = FMath::Min(RemainingToConsume,Entry.StackCount);
-					
-					//-----------------------------------------------------------------------------------------------
-					
-					/* TODO Посмотреть дальнейшую реализацию и логику перед принятием решения
-					*Цена, раз производительность в приоритете.** `CanRemoveItem` — `BlueprintNativeEvent`. 
-					*Пока дизайнер не переопределил его в блюпринте, вызывается C++-реализация напрямую,
-					*VM не задействована. Как только оверрайд появится — это вызов виртуальной машины на
-					*каждый подходящий стак в цикле.
-					*Для холодного пути (списание по действию игрока) это приемлемо.
-					*Если `ConsumeItemByTag` окажется в горячем пути — например, GAS-кост,
-					*проверяемый каждый кадр при зажатой кнопке, — тогда политику надо будет спрашивать
-					*один раз до цикла, а не на каждый стак.
-					*Сейчас так не делаю: не знаю твоих сценариев, а преждевременное усложнение здесь дороже вызова.
-					 */
-					
-					//Политика может запретить трогать конкретный стак (квестовый предмет).
-					//Пропускаем его и идём дальше - остальные стаки того же типа списать можно
-					if (!CanRemoveItem(Entry.InstanceID,ConsumeFromStack)) continue;
-					
-					//-----------------------------------------------------------------------------------------------
-					
-					Inventory.RemoveEntryByID(Entry.InstanceID,ConsumeFromStack);
-					
-					RemainingToConsume -= ConsumeFromStack;
-					ActuallyConsumed += ConsumeFromStack;
-					
-					if (RemainingToConsume <= 0)
-					{
-						break;
-					}
-				}
-			}
-		}
+		if (!Entry.IsValid()) continue;
+		if (!Entry.ItemDef->ItemTags.HasTagExact(ItemTag)) continue;
+		
+		const int32 ConsumeFromStack = FMath::Min(RemainingToConsume,Entry.StackCount);
+		if (!CanRemoveItem(Entry.InstanceID,ConsumeFromStack)) continue;
+		
+		Inventory.RemoveEntryByID(Entry.InstanceID,ConsumeFromStack);
+		
+		RemainingToConsume -= ConsumeFromStack;
+		ActuallyConsumed += ConsumeFromStack;
+		
+		if (RemainingToConsume <=0) break;
 	}
 	return ActuallyConsumed;
 }
@@ -415,7 +371,7 @@ FIrisInventoryAddResult UIrisInventoryComponent::AddEntry(const UIrisInventoryIt
 	/*
 	if (!ItemDef || CountToAdd <= 0 || HasAuthority()) return;
 	
-	/*TODO Добавить проверку веса и допустимого лимита перед добавлением и продумать универсальную логику,
+	TODO Добавить проверку веса и допустимого лимита перед добавлением и продумать универсальную логику,
 	которую будет реализовывать пользователь#1# 
 	
 	const int32 MaxStackSize = GetMaxStackSize(ItemDef);
@@ -438,6 +394,8 @@ FIrisInventoryAddResult UIrisInventoryComponent::AddEntry(const UIrisInventoryIt
 		Inventory.CreateNewEntry(ItemDef,AmmountToFill);
 		CountToAdd -= AmmountToFill;
 	}*/
+
+	return Result;
 }
 
 // ----------------------------------------------------------------------

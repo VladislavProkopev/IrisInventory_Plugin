@@ -2,10 +2,20 @@
 
 
 #include "CoreFeatures/Public/Inventory/Items/IrisInventoryItemDefinition.h"
+#include "CoreFeatures/Public/Inventory/Items/IrisInventoryFragment_Stats.h"
+#include "CoreFeatures/Public/Inventory/Items/IrisInventoryFragment_Stackable.h"
+#include "CoreFeatures/Public/Inventory/Items/IrisInventoryFragment_InstanceState.h"
+
 
 void UIrisInventoryItemDefinition::PostLoad()
 {
 	Super::PostLoad();
+	RebuildFragmentCache();
+}
+
+void UIrisInventoryItemDefinition::PostDuplicate(bool bDuplicateForPIE)
+{
+	Super::PostDuplicate(bDuplicateForPIE);
 	RebuildFragmentCache();
 }
 
@@ -24,4 +34,5 @@ void UIrisInventoryItemDefinition::RebuildFragmentCache()
 {
 	CachedStats     = FindFragmentByClass<UIrisInventoryFragment_Stats>();
 	CachedStackable = FindFragmentByClass<UIrisInventoryFragment_Stackable>();
+	CachedInstanceState = FindFragmentByClass<UIrisInventoryFragment_InstanceState>();
 }

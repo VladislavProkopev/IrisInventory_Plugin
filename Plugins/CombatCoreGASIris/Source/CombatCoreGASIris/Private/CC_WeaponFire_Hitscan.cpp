@@ -102,10 +102,7 @@ bool UCC_WeaponFire_Hitscan::CheckCost(const FGameplayAbilitySpecHandle Handle,
 	
 	if (!CachedInventoryComponent || CachedInstanceID == INDEX_NONE) return false;
 	
-	int32 CurrentWeaponSlotIndex = CachedInventoryComponent->FindSlotByInstanceID(CachedInstanceID);
-	if (CurrentWeaponSlotIndex == INDEX_NONE) return false;
-	
-	const int32 CurrentAmmo = CachedInventoryComponent->GetItemStat(CurrentWeaponSlotIndex,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current);
+	const int32 CurrentAmmo = CachedInventoryComponent->GetItemStatByInstanceID(CachedInstanceID,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current);
 	
 	return CurrentAmmo > 0;
 }
@@ -117,8 +114,5 @@ void UCC_WeaponFire_Hitscan::ApplyCost(const FGameplayAbilitySpecHandle Handle,
 	
 	if (!CachedInventoryComponent || CachedInstanceID == INDEX_NONE) return;
 	
-	const int32 CurrentWeaponSlotIndex = CachedInventoryComponent->FindSlotByInstanceID(CachedInstanceID);
-	if (CurrentWeaponSlotIndex == INDEX_NONE) return;
-	
-	CachedInventoryComponent->ModifyItemStat(CurrentWeaponSlotIndex,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current,-1);
+	CachedInventoryComponent->ModifyItemStatByInstanceID(CachedInstanceID,CoreGameplayTags::InventoryTags::Item_Stat_Ammo_Current,-1);
 }

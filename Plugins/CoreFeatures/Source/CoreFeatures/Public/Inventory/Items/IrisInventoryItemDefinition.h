@@ -10,6 +10,7 @@
 
 class UIrisInventoryFragment_Stats;
 class UIrisInventoryFragment_Stackable;
+class UIrisInventoryFragment_InstanceState;
 /**
  * 
  */
@@ -24,8 +25,15 @@ public:
 	//а поле на каждый тип фрагмента превратило бы определение в свалку
 	const UIrisInventoryFragment_Stats*     GetStatsFragment()     const { return CachedStats; }
 	const UIrisInventoryFragment_Stackable* GetStackableFragment() const { return CachedStackable; }
+	//Наличие фрагмента = предмет уникален. Читается на каждой записи стата
+	//(ModifyItemStatByInstanceID), то есть на каждый выстрел - потому в кеше
+	const UIrisInventoryFragment_InstanceState* GetInstanceStateFragment() const { return CachedInstanceState; }
 
 	virtual void PostLoad() override;
+	//Копия ассета (Ctrl+D) не проходит через PostLoad, а Transient-поля не переносятся
+	//при дублировании: без этого у копии кеш останется пустым до перезапуска редактора
+	virtual void PostDuplicate(bool bDuplicateForPIE) override;
+	
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
@@ -74,4 +82,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<const UIrisInventoryFragment_Stackable> CachedStackable = nullptr;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<const UIrisInventoryFragment_InstanceState> CachedInstanceState = nullptr;
 };

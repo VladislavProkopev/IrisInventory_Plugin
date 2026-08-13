@@ -4,7 +4,7 @@
 #include "IrisInventoryComponent.h"
 #include "TimerManager.h"
 
-DECLARE_CYCLE_STAT(TEXT("Inventory Stress Test Tick"), STAT_InventoryStressTestTick, STATGROUP_Game);
+DECLARE_CYCLE_STAT(TEXT("Inventory Sandbox Stress Test Tick"), STAT_InventorySandboxStressTestTick, STATGROUP_Game);
 
 AInventoryTestSandboxPawn::AInventoryTestSandboxPawn()
 {
@@ -138,7 +138,7 @@ void AInventoryTestSandboxPawn::StartStressTest(float Interval, int32 OperationP
 void AInventoryTestSandboxPawn::ExecuteTestTick()
 {
     TRACE_CPUPROFILER_EVENT_SCOPE(AInventoryTestSandboxPawn::ExecuteTestTick);
-    SCOPE_CYCLE_COUNTER(STAT_InventoryStressTestTick);
+    SCOPE_CYCLE_COUNTER(STAT_InventorySandboxStressTestTick);
 
     if (!HasAuthority() || !TestItemDef || !InventoryComponent) return;
 

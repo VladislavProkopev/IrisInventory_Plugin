@@ -27,22 +27,22 @@ public:
 	TObjectPtr<AMockInventoryOwner> TargetOwner;
 	
 	UFUNCTION(BlueprintCallable,Category="Test | Execution",BlueprintAuthorityOnly)
-	void StartStressTest(float Interval = 0.1f, int32 OperationPerTick = 1000);
+	void StartStressTest(float InInterval = 0.1f, int32 InOperationPerTick = 1000);
 	
 	UFUNCTION(BlueprintCallable,Category="Test | Execution",BlueprintAuthorityOnly)
 	void StopStressTest();
 	
 	UFUNCTION(Blueprintable,Category="Test | Execution",BlueprintAuthorityOnly)
-	void RunBurstTest_MassAdd(const UIrisInventoryItemDefinition* ItemDefinition,int32 Count);
+	void RunBurstTest_MassAdd(const UIrisInventoryItemDefinition* InItemDefinition,int32 InCount);
 	
 	UFUNCTION(BlueprintCallable,Category="Test | Execution",BlueprintAuthorityOnly)
-	void RunBurstTest_MassSplit(int32 TargetInstanceID,int32 SplitAmount,int32 Iterations);
+	void RunBurstTest_MassSplit(int32 TargetInstanceID,int32 SplitAmount,int32 InIterations);
 	
 	UFUNCTION(BlueprintCallable,Category="Test | Execution",BlueprintAuthorityOnly)
-	void RunBurstTest_MassRemove(const UIrisInventoryItemDefinition* ItemDefinition);
+	void RunBurstTest_MassRemove(const UIrisInventoryItemDefinition* InItemDefinition);
 	
 	UFUNCTION(BlueprintCallable,Category="Test | Execution",BlueprintAuthorityOnly)
-	void RunBurstTest_EquipUnequipCycle(const UIrisInventoryItemDefinition* EquipItemDef,int32 Iterations);
+	void RunBurstTest_EquipUnequipCycle(const UIrisInventoryItemDefinition* EquipItemDef,int32 InIterations);
 	
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly,Category="Test | Parameters")
 	const UIrisInventoryItemDefinition* ItemDefinition;

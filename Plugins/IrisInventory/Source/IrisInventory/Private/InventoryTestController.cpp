@@ -26,16 +26,16 @@ void AInventoryTestController::BeginPlay()
 	}
 }
 
-void AInventoryTestController::StartStressTest(float Interval, int32 OperationPerTick)
+void AInventoryTestController::StartStressTest(float InInterval, int32 InOperationPerTick)
 {
 	if (!HasAuthority()) return;
 	
-	BatchSize = OperationPerTick;
+	BatchSize = InOperationPerTick;
 	GetWorld()->GetTimerManager().SetTimer(
 		StressTestTimerHandle,
 		this,
 		&AInventoryTestController::ExecuteTestTick,
-		Interval,
+		InInterval,
 		true);
 }
 
@@ -44,26 +44,26 @@ void AInventoryTestController::StopStressTest()
 	GetWorld()->GetTimerManager().ClearTimer(StressTestTimerHandle);
 }
 
-void AInventoryTestController::RunBurstTest_MassAdd(const UIrisInventoryItemDefinition* ItemDefinition, int32 Count)
+void AInventoryTestController::RunBurstTest_MassAdd(const UIrisInventoryItemDefinition* InItemDefinition, int32 InCount)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(TEST_MassAdd);
 	
-	if (!HasAuthority() || !IsValid(TargetOwner) || !ItemDefinition) return;
+	if (!HasAuthority() || !IsValid(TargetOwner) || !InItemDefinition) return;
 	
 	//Генерируем мгновенную нагрузку (1кадр)
 	//Проверим, насколько быстро работает поиск свободного слота
-	for (int32 i = 0; i < Count; ++i)
+	for (int32 i = 0; i < InCount; ++i)
 	{
-		TargetOwner->InventoryComponent->AddEntry(ItemDefinition,1);
+		TargetOwner->InventoryComponent->AddEntry(InItemDefinition,1);
 	}
 }
 
-void AInventoryTestController::RunBurstTest_MassSplit(int32 TargetInstanceID, int32 SplitAmount, int32 Iterations)
+void AInventoryTestController::RunBurstTest_MassSplit(int32 TargetInstanceID, int32 SplitAmount, int32 InIterations)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(TEST_MassSplit);
-	if (!HasAuthority() || !IsValid(TargetOwner) || !TargetInstanceID || SplitAmount<=0 || Iterations<=0) return;
+	if (!HasAuthority() || !IsValid(TargetOwner) || !TargetInstanceID || SplitAmount<=0 || InIterations<=0) return;
 	
-	for (int32 i = 0; i < Iterations; ++i)
+	for (int32 i = 0; i < InIterations; ++i)
 	{
 		int32 Index = 0; //Просто дефолтное значение которое будет перезаписано (защита от дурака)
 		//Делим стак и записываем индекс нового элемента
@@ -74,7 +74,7 @@ void AInventoryTestController::RunBurstTest_MassSplit(int32 TargetInstanceID, in
 	}
 }
 
-void AInventoryTestController::RunBurstTest_MassRemove(const UIrisInventoryItemDefinition* ItemDefinition)
+void AInventoryTestController::RunBurstTest_MassRemove(const UIrisInventoryItemDefinition* InItemDefinition)
 {
 	/*TODO Сначала добавить методы в инвентарь, затем реализовать
 	 *if (HasAuthority() || !IsValid(TargetOwner) || !ItemDefinition) return;
@@ -83,11 +83,11 @@ void AInventoryTestController::RunBurstTest_MassRemove(const UIrisInventoryItemD
 }
 
 void AInventoryTestController::RunBurstTest_EquipUnequipCycle(const UIrisInventoryItemDefinition* EquipItemDef,
-	int32 Iterations)
+	int32 InIterations)
 {
-	if (!HasAuthority() || !IsValid(TargetOwner) || !EquipItemDef || Iterations < 1) return;
+	if (!HasAuthority() || !IsValid(TargetOwner) || !EquipItemDef || InIterations < 1) return;
 	
-	for (int32 i = 0; i < Iterations; ++i)
+	for (int32 i = 0; i < InIterations; ++i)
 	{
 		TargetOwner->EquipmentComponent->EquipItemByInstance(EquipItemDef);
 		TargetOwner->EquipmentComponent->UnequipItem();
